@@ -9,7 +9,7 @@ class SpotifyClient:
         self.auth_token = auth_token
         self.user_id = user_id
 
-    def get_last_played_trakcs(self, limit=10):
+    def get_last_played_tracks(self, limit=10):
         # Returns the last played tracks by the user
         url = f"https://api.spotify.com/v1/me/player/recently-played?limit={limit}"
         response = self._place_get_api_request(url)
