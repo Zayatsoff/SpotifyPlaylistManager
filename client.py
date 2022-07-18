@@ -61,6 +61,15 @@ class SpotifyClient:
         playlist = Playlist(name, playlist_id)
         return playlist
 
+    def populate_playlist(self, playlist, tracks):
+        # Adds tracks to playlist
+        tracks_uris = [track.create_spotify_uri() for track in tracks]
+        data = json.dumps(tracks_uris)
+        url = f"https://api.spotify.com/v1/playlits/{playlist.id}/tracks"
+        response = self._place_get_api_request(url, data)
+        response_json = response.json()
+        return response_json
+
     def _place_get_api_request(self, url):
         # Places a GET api request and returns the response
         response = requests.get(
