@@ -43,6 +43,24 @@ class SpotifyClient:
         ]
         return tracks
 
+    def create_playlist(self, name, public=True):
+        # Create new playlist
+
+        data = json.dumps(
+            {
+                "name": "New Playlist",
+                "description": "New playlist description",
+                "public": public,
+            }
+        )
+        url = f"https://api.spotify.com/v1/users/{self.user_id}/playlists"
+        response = self._place_post_api_request(url, data)
+        response_json = response.loads()
+
+        playlist_id = response_json["id"]
+        playlist = Playlist(name, playlist_id)
+        return playlist
+
     def _place_get_api_request(self, url):
         # Places a GET api request and returns the response
         response = requests.get(
