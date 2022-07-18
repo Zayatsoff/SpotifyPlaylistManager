@@ -75,8 +75,20 @@ class SpotifyClient:
         response = requests.get(
             url,
             headers={
-                "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.auth_token}",
+                "Content-Type": "application/json",
             },
+        )
+        return response
+
+    def _place_post_api_request(self, url, data):
+        # Places a POST api request and returns the response
+        response = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {self.auth_token}",
+                "Content-Type": "application/json",
+            },
+            data=data,
         )
         return response
