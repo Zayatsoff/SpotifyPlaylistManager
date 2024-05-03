@@ -1,29 +1,42 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 
-interface SpotifyAuthContextType {
+export interface SpotifyAuthContextType {
   token: string | null;
-  setAuthToken: (token: string) => void;
+  setToken: (token: string) => void;
 }
 
-const SpotifyAuthContext = createContext<SpotifyAuthContextType | null>(null);
+export const SpotifyAuthContext = createContext<SpotifyAuthContextType>({
+  token: null,
+  setToken: () => {},
+});
 
-export function useSpotifyAuth() {
-  const context = useContext(SpotifyAuthContext);
-  if (!context) {
-    throw new Error("useSpotifyAuth must be used within a SpotifyAuthProvider");
-  }
-  return context;
-}
+export const useSpotifyAuth = () => useContext(SpotifyAuthContext);
 
-export const SpotifyAuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(null);
+export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [token, setTokenState] = useState<string | null>(null);
 
-  const setAuthToken = (newToken: string) => {
-    setToken(newToken);
+  useEffect(() => {
+    const storedToken = localStorage.getItem("spotifyToken");
+    if (storedToken) {
+      setTokenState(storedToken);
+    }
+  }, []);
+
+  const setToken = (token: string) => {
+    localStorage.setItem("spotifyToken", token);
+    setTokenState(token);
   };
 
   return (
-    <SpotifyAuthContext.Provider value={{ token, setAuthToken }}>
+    <SpotifyAuthContext.Provider value={{ token, setToken }}>
       {children}
     </SpotifyAuthContext.Provider>
   );

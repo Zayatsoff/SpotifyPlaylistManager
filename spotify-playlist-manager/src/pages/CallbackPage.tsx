@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useSpotifyAuth } from "../context/SpotifyAuthContext";
+import { useSpotifyAuth } from "../context/SpotifyAuthContext"; // Update import
 import { useNavigate } from "react-router-dom";
 
 interface AuthQueryParams {
@@ -11,7 +11,7 @@ interface AuthQueryParams {
 }
 
 function CallbackPage() {
-  const { setAuthToken } = useSpotifyAuth();
+  const { setToken } = useSpotifyAuth(); // Update to use setToken
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,7 +21,7 @@ function CallbackPage() {
 
     if (queryParams.access_token) {
       // Save the access token
-      setAuthToken(queryParams.access_token);
+      setToken(queryParams.access_token); // Update to use setToken
 
       // Redirect to /playlists
       navigate("/playlists");
@@ -32,7 +32,7 @@ function CallbackPage() {
 
     // Clean the URL
     window.history.pushState({}, document.title, window.location.pathname);
-  }, [setAuthToken, navigate]);
+  }, [setToken, navigate]); // Update dependencies array
 
   return <div>Logged in! Redirecting...</div>;
 }

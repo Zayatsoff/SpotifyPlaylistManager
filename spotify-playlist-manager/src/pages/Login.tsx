@@ -36,10 +36,8 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
-      <button onClick={handleLoginClick} className="spotify-login-button">
-        Login with Spotify
-      </button>
+    <div className=" bg-red-500">
+      <button onClick={handleLoginClick}>Login with Spotify</button>
     </div>
   );
 }

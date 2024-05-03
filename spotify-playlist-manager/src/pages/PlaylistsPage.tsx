@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext"; // Adjust the import path as necessary
+import SideNav from "../components/playlists/SideNav"; // Assuming SideNav component is located in the same directory
 
 interface Playlist {
   id: string;
@@ -47,20 +48,11 @@ const PlaylistsPage: React.FC = () => {
   }, [token]);
 
   return (
-    <div className="flex flex-wrap gap-4">
-      {playlists.map((playlist) => (
-        <div
-          key={playlist.id}
-          className="bg-green-500 text-white p-4 rounded-lg w-64"
-        >
-          <img
-            src={playlist.images?.[0]?.url || ""} // Add null checks here
-            alt={`${playlist.name} cover`}
-            className="w-full rounded-lg"
-          />
-          <div className="mt-2">{playlist.name}</div>
-        </div>
-      ))}
+    <div className="w-screen h-screen grid grid-cols-6 ">
+      <div className="col-span-1 h-full w-full overflow-auto">
+        <SideNav playlists={playlists} />
+      </div>
+      <div className="col-span-4"> hi</div>
     </div>
   );
 };
