@@ -19,6 +19,7 @@ interface Track {
     name: string;
   };
   albumImage: string;
+  isSongInPlaylist?: boolean;
 }
 
 const PlaylistsPage: React.FC = () => {
@@ -83,10 +84,9 @@ const PlaylistsPage: React.FC = () => {
           artists: item.track.artists.map((artist: any) => ({
             name: artist.name,
           })),
-          // Extract album image URL from the first image in the album.images array
           albumImage: item.track.album.images[0]?.url || "",
+          isSongInPlaylist: selectedPlaylists.some((p) => p.id === playlist.id),
         }));
-        // Store tracks for each playlist separately
         setPlaylistTracks((prevTracks) => ({
           ...prevTracks,
           [playlist.id]: tracks,
@@ -102,6 +102,19 @@ const PlaylistsPage: React.FC = () => {
     });
   }, [selectedPlaylists, token]);
 
+  const toggleSongInPlaylist = (trackId: string, playlistId: string) => {
+    const updatedTracks = { ...playlistTracks };
+    updatedTracks[playlistId] = updatedTracks[playlistId].map((track) => {
+      if (track.id === trackId) {
+        return {
+          ...track,
+          isSongInPlaylist: !track.isSongInPlaylist,
+        };
+      }
+      return track;
+    });
+    setPlaylistTracks(updatedTracks);
+  };
   const handlePlaylistToggle = (playlist: Playlist) => {
     const index = selectedPlaylists.findIndex((p) => p.id === playlist.id);
     if (index === -1) {
@@ -126,40 +139,51 @@ const PlaylistsPage: React.FC = () => {
         <CardHeader>Edit Playlists</CardHeader>
         <CardContent className="overflow-hidden w-full h-full ">
           <ScrollArea className=" w-full h-full">
-            <div className=" w-full h-full flex flex-row gap-3">
-              {selectedPlaylists.map((playlist, index) => (
-                <div key={playlist.id} className="">
-                  <h2 className="font-bold">{playlist.name}</h2>
-                  <div className="flex flex-col gap-3">
+            <div className="w-full h-full flex flex-row gap-3">
+              {/* Songs Section */}
+              <div className="w-1/3">
+                <h2 className="font-bold">Song</h2>
+                {selectedPlaylists.map((playlist, index) => (
+                  <div key={playlist.id} className="flex flex-col gap-3">
                     {playlistTracks[playlist.id]?.map((track) => (
                       <div key={track.id} className="flex items-center">
-                        {/* Display album cover */}
                         <img
                           src={track.albumImage || ""}
                           alt={`${track.album?.name} cover`}
                           className="w-10 h-10 rounded-full mr-2"
                         />
-                        <div className="rounded-md bg-primary p-3">
-                          {/* Truncate track name to first 30 characters */}
-                          {track.name.length > 30
-                            ? `${track.name.slice(0, 30)}...`
-                            : track.name}{" "}
-                          -{" "}
-                          {/* Combine remaining artists into "..." if there are more than 2 */}
-                          {track.artists.length > 2
-                            ? `${track.artists
-                                .slice(0, 2)
-                                .map((artist) => artist.name)
-                                .join(", ")}...`
-                            : track.artists
-                                .map((artist) => artist.name)
-                                .join(", ")}
+                        <div className=" p-3">{track.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              {/* Artists Section */}
+              <div className="w-1/3">
+                <h2 className="font-bold">Artist</h2>
+                {selectedPlaylists.map((playlist) => (
+                  <div key={playlist.id} className="flex flex-col gap-3">
+                    {playlistTracks[playlist.id]?.map((track) => (
+                      <div key={track.id} className="">
+                        <div className="p-3">
+                          {track.artists
+                            .map((artist) => artist.name)
+                            .join(", ")}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              {/* Playlists Section */}
+              <div className="w-1/3">
+                <h2 className="font-bold">Playlists</h2>
+                {selectedPlaylists.map((playlist) => (
+                  <div key={playlist.id}>
+                    <h3>{playlist.name}</h3>
+                  </div>
+                ))}
+              </div>
             </div>
           </ScrollArea>
         </CardContent>
