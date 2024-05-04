@@ -8,7 +8,7 @@ import React, {
 
 export interface SpotifyAuthContextType {
   token: string | null;
-  setToken: (token: string) => void;
+  setToken: (token: string | null) => void;
 }
 
 export const SpotifyAuthContext = createContext<SpotifyAuthContextType>({
@@ -24,14 +24,23 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   const [token, setTokenState] = useState<string | null>(null);
 
   useEffect(() => {
+    // Attempt to retrieve the token from local storage
     const storedToken = localStorage.getItem("spotifyToken");
     if (storedToken) {
       setTokenState(storedToken);
     }
+
+    return () => {
+      // Cleanup function
+    };
   }, []);
 
-  const setToken = (token: string) => {
-    localStorage.setItem("spotifyToken", token);
+  const setToken = (token: string | null) => {
+    if (token === null) {
+      localStorage.removeItem("spotifyToken"); // Clear token from storage on logout or invalidation
+    } else {
+      localStorage.setItem("spotifyToken", token); // Save token to storage
+    }
     setTokenState(token);
   };
 

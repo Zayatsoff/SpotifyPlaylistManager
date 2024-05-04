@@ -3,7 +3,7 @@ export default function Login() {
   const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const redirect_uri = import.meta.env.VITE_SPOTIFY_REDIRECT_URI;
   const scope =
-    "user-read-private playlist-read-collaborative playlist-read-private ";
+    "user-read-private playlist-read-collaborative playlist-read-private playlist-modify-private playlist-modify-public";
 
   const generateRandomString = (length: number) => {
     var text = "";

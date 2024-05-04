@@ -1,19 +1,21 @@
 import React, { useEffect, useReducer } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
+import TrackComponent from "@/components/playlists/TrackComponent";
+import ArtistComponent from "@/components/playlists/ArtistComponent";
+import { Track, Playlist } from "../interfaces/PlaylistInterfaces";
 import SideNav from "../components/sideNav/SideNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
 import { Plus, Check } from "lucide-react";
-import TrackComponent from "@/components/playlists/TrackComponent";
-import ArtistComponent from "@/components/playlists/ArtistComponent";
-import { Track, Playlist, Artist } from "../interfaces/PlaylistInterfaces";
 
 // Define action types
 const actionTypes = {
   SET_PLAYLISTS: "SET_PLAYLISTS",
   TOGGLE_PLAYLIST_SELECTION: "TOGGLE_PLAYLIST_SELECTION",
   SET_TRACKS: "SET_TRACKS",
+  ADD_TRACK_TO_PLAYLIST: "ADD_TRACK_TO_PLAYLIST",
+  REMOVE_TRACK_FROM_PLAYLIST: "REMOVE_TRACK_FROM_PLAYLIST",
 };
 // Define the initial state with the correct types
 const initialState = {
@@ -59,6 +61,29 @@ const reducer = (state: State, action: Action) => {
           [action.payload.id]: action.payload.tracks as Track[],
         },
       };
+    case actionTypes.ADD_TRACK_TO_PLAYLIST:
+      return {
+        ...state,
+        playlistTracks: {
+          ...state.playlistTracks,
+          [action.payload.playlistId]: [
+            ...(state.playlistTracks[action.payload.playlistId] || []),
+            action.payload.track,
+          ],
+        },
+      };
+    case actionTypes.REMOVE_TRACK_FROM_PLAYLIST:
+      const updatedTracks = state.playlistTracks[
+        action.payload.playlistId
+      ].filter((t) => t.id !== action.payload.trackId);
+      return {
+        ...state,
+        playlistTracks: {
+          ...state.playlistTracks,
+          [action.payload.playlistId]: updatedTracks,
+        },
+      };
+
     default:
       return state;
   }
@@ -129,6 +154,39 @@ const PlaylistsPage: React.FC = () => {
     (track: Track) => track.id
   );
 
+  const addTrackToPlaylist = async (playlistId: string, trackUri: string) => {
+    const response = await fetch(
+      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ uris: [trackUri] }),
+      }
+    );
+    return response.json();
+  };
+
+  const removeTrackFromPlaylist = async (
+    playlistId: string,
+    trackUri: string
+  ) => {
+    const response = await fetch(
+      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tracks: [{ uri: trackUri }] }),
+      }
+    );
+    return response.json();
+  };
+
   return (
     <div className="w-screen h-screen grid grid-cols-[auto,1fr] gap-3 overflow-hidden bg-background">
       <SideNav
@@ -138,53 +196,83 @@ const PlaylistsPage: React.FC = () => {
       />
       <Card className="flex-1 overflow-hidden">
         <CardHeader>Edit Playlists</CardHeader>
-        <CardContent className="flex overflow-auto">
-          {/* Songs Column */}
-          <div className="flex flex-col p-3">
-            <h2 className="font-bold">Song</h2>
-            <div className="flex flex-col gap-6">
-              {allTracks.map((track: Track) => (
-                <TrackComponent key={track.id} track={track} />
-              ))}
-            </div>
-          </div>
-          {/* Artists Column */}
-          <div className="flex flex-col p-3">
-            <h2 className="font-bold">Artist</h2>
-            <div className="flex flex-col gap-6">
-              {allTracks.map((track: Track) => (
-                <ArtistComponent key={track.id} track={track} />
-              ))}
-            </div>
-          </div>
-
-          {/* Playlists Columns */}
-          {state.selectedPlaylists.map((playlist: Playlist) => (
-            <div key={playlist.id} className="flex flex-col p-3 w-42">
-              <h2 className="font-bold">{playlist.name}</h2>
+        <ScrollArea className="w-full h-full">
+          <CardContent className="flex overflow-auto">
+            {/* Songs Column */}
+            <div className="flex flex-col p-3">
+              <h2 className="font-bold">Song</h2>
               <div className="flex flex-col gap-6">
-                {allTracks.map((track: Track) => {
-                  const isInPlaylist = !!state.playlistTracks[
-                    playlist.id
-                  ]?.find((pTrack: Track) => pTrack.id === track.id);
-                  return (
-                    <div key={track.id} className="p-1 h-14 flex items-center">
-                      {isInPlaylist ? (
-                        <span className="text-green-500">
-                          <Check />
-                        </span>
-                      ) : (
-                        <span className="text-blue-500">
-                          <Plus />
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                {allTracks.map((track: Track) => (
+                  <TrackComponent key={track.id} track={track} />
+                ))}
               </div>
             </div>
-          ))}
-        </CardContent>
+            {/* Artists Column */}
+            <div className="flex flex-col p-3">
+              <h2 className="font-bold">Artist</h2>
+              <div className="flex flex-col gap-6">
+                {allTracks.map((track: Track) => (
+                  <ArtistComponent key={track.id} track={track} />
+                ))}
+              </div>
+            </div>
+            {/* Playlists Columns */}
+            {state.selectedPlaylists.map((playlist: Playlist) => (
+              <div key={playlist.id} className="flex flex-col p-3 w-42">
+                <h2 className="font-bold">{playlist.name}</h2>
+                <div className="flex flex-col gap-6">
+                  {allTracks.map((track: Track) => {
+                    const isInPlaylist = state.playlistTracks[
+                      playlist.id
+                    ]?.some((pTrack) => pTrack.id === track.id);
+                    const handleToggleTrack = () => {
+                      if (isInPlaylist) {
+                        removeTrackFromPlaylist(
+                          playlist.id,
+                          `spotify:track:${track.id}`
+                        ).then(() => {
+                          dispatch({
+                            type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
+                            payload: {
+                              playlistId: playlist.id,
+                              trackId: track.id,
+                            },
+                          });
+                        });
+                      } else {
+                        addTrackToPlaylist(
+                          playlist.id,
+                          `spotify:track:${track.id}`
+                        ).then(() => {
+                          dispatch({
+                            type: actionTypes.ADD_TRACK_TO_PLAYLIST,
+                            payload: { playlistId: playlist.id, track: track },
+                          });
+                        });
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={track.id}
+                        className="p-1 h-14 flex items-center justify-between"
+                      >
+                        <span>{track.name}</span>
+                        <button onClick={handleToggleTrack}>
+                          {isInPlaylist ? (
+                            <Check className="text-green-500" />
+                          ) : (
+                            <Plus className="text-blue-500" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </ScrollArea>
       </Card>
     </div>
   );
