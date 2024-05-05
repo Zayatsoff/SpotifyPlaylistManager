@@ -1,0 +1,20 @@
+# Spotify Playlist Manager
+
+## Features
+
+- Consolidates selected playlists, presenting all their songs in a single view
+- Seamlessly add or remove songs across multiple playlists
+
+## Dependancies
+
+- React
+- Typescript
+- ShadCN
+- Lucide
+
+## Disclaimer
+
+- You'll need to login using Spotify. None of your credentials are accessible to me.
+- Inpired by [Playlist Manager](https://github.com/eduardolima93/playlist-manager). I loved the app, but it wasn't getting updated and has some issues.
+
+.
