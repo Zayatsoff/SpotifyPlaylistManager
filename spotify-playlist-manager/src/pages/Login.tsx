@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import ThemeToggler from "@/components/ui/ThemeToggler";
 import { default as Logo } from "@/assets/spm_quick_logo.svg?react";
 import { default as SpotifyLogo } from "@/assets/spotify.svg?react";
 
@@ -41,18 +42,25 @@ export default function Login() {
 
   return (
     <div className="w-screen h-screen bg-background">
-      <div className="w-full h-2/3 flex flex-col items-center justify-center gap-20 xl:gap-35 2xl:gap-40 text-2xl">
+      <div className="absolute top-6 right-6 ">
+        <ThemeToggler />
+      </div>
+
+      <div className="w-full h-2/3 flex flex-col items-center justify-center gap-10 xl:gap-35 2xl:gap-40 text-2xl">
         <Logo className="text-foreground w-3/4 xl:w-2/3" />
         <Button
           onClick={handleLoginClick}
-          className="h-16 w-64 rounded-full text-xl bg-primary/10 shadow-md hover:bg-primary/30"
+          className="h-10 lg:h-16 w-42 lg:w-72 rounded-full bg-primary/10 shadow-md hover:bg-primary/30 text-foreground text-sm lg:text-xl"
         >
-          <SpotifyLogo className="mr-3" />
-          Sign in with Spotify
+          <SpotifyLogo className="mr-3 w-5 lg:w-8" />
+          <div>
+            Sign in with&nbsp;
+            <span className="underline decoration-spotify">Spotify</span>
+          </div>
         </Button>
       </div>
-      <div className="absolute bottom-3 right-3 text-lg">
-        made by <span className="underline decoration-accent">lior</span>
+      <div className="absolute bottom-3 right-3 text-sm text-foreground">
+        made by lior rozin
       </div>
     </div>
   );

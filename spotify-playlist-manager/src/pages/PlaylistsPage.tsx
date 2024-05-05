@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
 import { Plus, Check } from "lucide-react";
+import ThemeToggler from "@/components/ui/ThemeToggler";
 
 // Define action types
 const actionTypes = {
@@ -189,6 +190,9 @@ const PlaylistsPage: React.FC = () => {
 
   return (
     <div className="w-screen h-screen grid grid-cols-[auto,1fr] gap-3 overflow-hidden bg-background">
+      <div className="absolute top-6 right-6 ">
+        <ThemeToggler />
+      </div>
       <SideNav
         playlists={state.playlists}
         selectedPlaylists={state.selectedPlaylists}
@@ -260,9 +264,9 @@ const PlaylistsPage: React.FC = () => {
                         <span>{track.name}</span>
                         <button onClick={handleToggleTrack}>
                           {isInPlaylist ? (
-                            <Check className="text-green-500" />
+                            <Check className="text-primary" />
                           ) : (
-                            <Plus className="text-blue-500" />
+                            <Plus className="text-accent" />
                           )}
                         </button>
                       </div>

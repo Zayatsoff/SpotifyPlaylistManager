@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import { useNavigate } from "react-router-dom";
+import ThemeToggler from "@/components/ui/ThemeToggler";
 
 interface AuthQueryParams {
   access_token?: string;
@@ -34,7 +35,16 @@ function CallbackPage() {
     window.history.pushState({}, document.title, window.location.pathname);
   }, [setToken, navigate]);
 
-  return <div>Logged in! Redirecting...</div>;
+  return (
+    <div className="w-screen h-screen bg-background text-foreground">
+      <div className="absolute top-6 right-6 ">
+        <ThemeToggler />
+      </div>
+      <div className="w-full h-2/3 flex flex-col items-center justify-center gap-20 xl:gap-35 2xl:gap-40 text-2xl ">
+        Logged in! Redirecting...
+      </div>
+    </div>
+  );
 }
 
 export default CallbackPage;
