@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/button";
+import { default as Logo } from "@/assets/spm_quick_logo.svg?react";
+import { default as SpotifyLogo } from "@/assets/spotify.svg?react";
+
 export default function Login() {
   const stateKey = "spotify_auth_state";
   const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
@@ -36,8 +40,20 @@ export default function Login() {
   };
 
   return (
-    <div className=" bg-red-500">
-      <button onClick={handleLoginClick}>Login with Spotify</button>
+    <div className="w-screen h-screen bg-background">
+      <div className="w-full h-2/3 flex flex-col items-center justify-center gap-20 xl:gap-35 2xl:gap-40 text-2xl">
+        <Logo className="text-foreground w-3/4 xl:w-2/3" />
+        <Button
+          onClick={handleLoginClick}
+          className="h-16 w-64 rounded-full text-xl bg-primary/10 shadow-md hover:bg-primary/30"
+        >
+          <SpotifyLogo className="mr-3" />
+          Sign in with Spotify
+        </Button>
+      </div>
+      <div className="absolute bottom-3 right-3 text-lg">
+        made by <span className="underline decoration-accent">lior</span>
+      </div>
     </div>
   );
 }
