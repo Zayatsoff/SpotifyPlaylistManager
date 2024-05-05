@@ -25,28 +25,28 @@ const SideNav: React.FC<SideNavProps> = ({
         <CardHeader>Playlists</CardHeader>
         <CardContent>
           <ul>
-            {playlists?.map((playlist) => (
-              <li
-                key={playlist.id}
-                className="flex items-center mb-2"
-                onClick={() => onPlaylistToggle(playlist)} // Updated to onPlaylistToggle
-              >
-                <img
-                  src={playlist.images?.[0]?.url || ""}
-                  alt={`${playlist.name} cover`}
-                  className="w-10 h-10 rounded-full mr-2"
-                />
-                <span>{playlist.name}</span>
-                <input
-                  type="checkbox"
-                  className="ml-auto"
-                  checked={selectedPlaylists.some(
-                    (selectedPlaylist) => selectedPlaylist.id === playlist.id
-                  )} // Check if the playlist is selected
-                  readOnly // Make the checkbox read-only
-                />
-              </li>
-            ))}
+            {playlists?.map((playlist) => {
+              const isSelected = selectedPlaylists.some(
+                (selectedPlaylist) => selectedPlaylist.id === playlist.id
+              );
+              const listItemClass = isSelected
+                ? "rounded-xl p-1 bg-primary/30 hover:bg-primary/40 font-semibold flex items-center mb-2"
+                : "rounded-xl flex items-center mb-2 p-1 hover:bg-primary/10";
+              return (
+                <li
+                  key={playlist.id}
+                  className={listItemClass}
+                  onClick={() => onPlaylistToggle(playlist)}
+                >
+                  <img
+                    src={playlist.images?.[0]?.url || ""}
+                    alt={`${playlist.name} cover`}
+                    className="w-10 h-10 rounded-full mr-2"
+                  />
+                  <span>{playlist.name}</span>
+                </li>
+              );
+            })}
           </ul>
         </CardContent>
       </ScrollArea>
