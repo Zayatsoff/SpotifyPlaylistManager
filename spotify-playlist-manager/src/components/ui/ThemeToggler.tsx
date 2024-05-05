@@ -1,5 +1,6 @@
 import { Moon } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import CustomTooltip from "@/components/ui/CustomTooltip";
 
 const ThemeToggler: React.FC = () => {
   // Set default theme to 'dark' if not found in localStorage
@@ -20,12 +21,18 @@ const ThemeToggler: React.FC = () => {
   }, [theme]);
 
   return (
-    <div
-      onClick={toggleTheme}
-      className=" text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center"
-    >
-      <Moon className="w-5" />
-    </div>
+    <CustomTooltip
+      children={
+        <div
+          onClick={toggleTheme}
+          className=" text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center"
+        >
+          <Moon className="w-5" />
+        </div>
+      }
+      description={"Change theme"}
+      time={400}
+    />
   );
 };
 

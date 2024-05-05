@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
 import { Plus, Check } from "lucide-react";
 import ThemeToggler from "@/components/ui/ThemeToggler";
+import { truncateText } from "@/utils/textHelpers";
+import CustomTooltip from "@/components/ui/CustomTooltip";
 
 // Define action types
 const actionTypes = {
@@ -223,7 +225,13 @@ const PlaylistsPage: React.FC = () => {
             {/* Playlists Columns */}
             {state.selectedPlaylists.map((playlist: Playlist) => (
               <div key={playlist.id} className="flex flex-col p-3 w-42">
-                <h2 className="font-bold">{playlist.name}</h2>
+                <h2 className="font-bold">
+                  <CustomTooltip
+                    children={truncateText(playlist.name, 20)}
+                    description={playlist.name}
+                    time={300}
+                  />
+                </h2>
                 <div className="flex flex-col gap-6">
                   {allTracks.map((track: Track) => {
                     const isInPlaylist = state.playlistTracks[
@@ -259,14 +267,13 @@ const PlaylistsPage: React.FC = () => {
                     return (
                       <div
                         key={track.id}
-                        className="p-1 h-14 flex items-center justify-between"
+                        className="p-1 h-14 flex justify-center "
                       >
-                        <span>{track.name}</span>
-                        <button onClick={handleToggleTrack}>
+                        <button onClick={handleToggleTrack} className="">
                           {isInPlaylist ? (
-                            <Check className="text-primary" />
+                            <Check className="text-primary hover:text-primary/50" />
                           ) : (
-                            <Plus className="text-accent" />
+                            <Plus className="text-accent hover:text-accent/50" />
                           )}
                         </button>
                       </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Track } from "../../interfaces/PlaylistInterfaces"; // Correct the path as necessary
-
+import { truncateText } from "@/utils/textHelpers";
+import CustomTooltip from "@/components/ui/CustomTooltip";
 interface TrackComponentProps {
   track: Track;
 }
@@ -13,7 +14,12 @@ const TrackComponent: React.FC<TrackComponentProps> = ({ track }) => {
         alt={track.name}
         className="w-10 h-10 rounded-full mr-2"
       />
-      {track.name}
+
+      <CustomTooltip
+        children={<div>{truncateText(track.name, 30)}</div>}
+        description={track.name}
+        time={300}
+      />
     </div>
   );
 };
