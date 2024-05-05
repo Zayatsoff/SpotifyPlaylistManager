@@ -1,6 +1,7 @@
 <p float="left">
   <img src="/assets/logo_shadow.png" width="100%" />
 </p>
+
 ## Features
 
 - Consolidates selected playlists, presenting all their songs in a single view
