@@ -59,8 +59,15 @@ export default function Login() {
           </div>
         </Button>
       </div>
-      <div className="absolute bottom-3 right-3 text-sm text-foreground">
-        made by lior rozin
+      <div className="absolute bottom-3 right-3 text-sm text-foreground underline">
+        <a
+          href="https://github.com/Zayatsoff"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-accent"
+        >
+          made by lior rozin
+        </a>
       </div>
     </div>
   );
