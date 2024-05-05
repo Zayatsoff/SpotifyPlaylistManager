@@ -191,100 +191,105 @@ const PlaylistsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen grid grid-cols-[auto,1fr] gap-3 overflow-hidden bg-background">
+    <div className="w-screen h-screen  overflow-hidden bg-background">
       <div className="absolute top-6 right-6 ">
         <ThemeToggler />
       </div>
-      <SideNav
-        playlists={state.playlists}
-        selectedPlaylists={state.selectedPlaylists}
-        onPlaylistToggle={handlePlaylistToggle}
-      />
-      <Card className="flex-1 overflow-hidden">
-        <CardHeader>Edit Playlists</CardHeader>
-        <ScrollArea className="w-full h-full">
-          <CardContent className="flex overflow-auto">
-            {/* Songs Column */}
-            <div className="flex flex-col p-3">
-              <h2 className="font-bold">Song</h2>
-              <div className="flex flex-col gap-6">
-                {allTracks.map((track: Track) => (
-                  <TrackComponent key={track.id} track={track} />
-                ))}
-              </div>
-            </div>
-            {/* Artists Column */}
-            <div className="flex flex-col p-3">
-              <h2 className="font-bold">Artist</h2>
-              <div className="flex flex-col gap-6">
-                {allTracks.map((track: Track) => (
-                  <ArtistComponent key={track.id} track={track} />
-                ))}
-              </div>
-            </div>
-            {/* Playlists Columns */}
-            {state.selectedPlaylists.map((playlist: Playlist) => (
-              <div key={playlist.id} className="flex flex-col p-3 w-42">
-                <h2 className="font-bold">
-                  <CustomTooltip
-                    children={truncateText(playlist.name, 20)}
-                    description={playlist.name}
-                    time={300}
-                  />
-                </h2>
-                <div className="flex flex-col gap-6">
-                  {allTracks.map((track: Track) => {
-                    const isInPlaylist = state.playlistTracks[
-                      playlist.id
-                    ]?.some((pTrack) => pTrack.id === track.id);
-                    const handleToggleTrack = () => {
-                      if (isInPlaylist) {
-                        removeTrackFromPlaylist(
-                          playlist.id,
-                          `spotify:track:${track.id}`
-                        ).then(() => {
-                          dispatch({
-                            type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
-                            payload: {
-                              playlistId: playlist.id,
-                              trackId: track.id,
-                            },
-                          });
-                        });
-                      } else {
-                        addTrackToPlaylist(
-                          playlist.id,
-                          `spotify:track:${track.id}`
-                        ).then(() => {
-                          dispatch({
-                            type: actionTypes.ADD_TRACK_TO_PLAYLIST,
-                            payload: { playlistId: playlist.id, track: track },
-                          });
-                        });
-                      }
-                    };
+      <div className="w-full h-full grid grid-cols-[auto,1fr] gap-3 p-3 overflow-hidden">
+        <SideNav
+          playlists={state.playlists}
+          selectedPlaylists={state.selectedPlaylists}
+          onPlaylistToggle={handlePlaylistToggle}
+        />
 
-                    return (
-                      <div
-                        key={track.id}
-                        className="p-1 h-14 flex justify-center "
-                      >
-                        <button onClick={handleToggleTrack} className="">
-                          {isInPlaylist ? (
-                            <Check className="text-primary hover:text-primary/50" />
-                          ) : (
-                            <Plus className="text-accent hover:text-accent/50" />
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
+        <Card className="flex-1 overflow-hidden">
+          <CardHeader>Edit Playlists</CardHeader>
+          <ScrollArea className="w-full h-full">
+            <CardContent className="flex overflow-auto">
+              {/* Songs Column */}
+              <div className="flex flex-col p-3">
+                <h2 className="font-bold">Song</h2>
+                <div className="flex flex-col gap-6">
+                  {allTracks.map((track: Track) => (
+                    <TrackComponent key={track.id} track={track} />
+                  ))}
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </ScrollArea>
-      </Card>
+              {/* Artists Column */}
+              <div className="flex flex-col p-3">
+                <h2 className="font-bold">Artist</h2>
+                <div className="flex flex-col gap-6">
+                  {allTracks.map((track: Track) => (
+                    <ArtistComponent key={track.id} track={track} />
+                  ))}
+                </div>
+              </div>
+              {/* Playlists Columns */}
+              {state.selectedPlaylists.map((playlist: Playlist) => (
+                <div key={playlist.id} className="flex flex-col p-3 w-42">
+                  <h2 className="font-bold">
+                    <CustomTooltip
+                      children={truncateText(playlist.name, 20)}
+                      description={playlist.name}
+                      time={300}
+                    />
+                  </h2>
+                  <div className="flex flex-col gap-6">
+                    {allTracks.map((track: Track) => {
+                      const isInPlaylist = state.playlistTracks[
+                        playlist.id
+                      ]?.some((pTrack) => pTrack.id === track.id);
+                      const handleToggleTrack = () => {
+                        if (isInPlaylist) {
+                          removeTrackFromPlaylist(
+                            playlist.id,
+                            `spotify:track:${track.id}`
+                          ).then(() => {
+                            dispatch({
+                              type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
+                              payload: {
+                                playlistId: playlist.id,
+                                trackId: track.id,
+                              },
+                            });
+                          });
+                        } else {
+                          addTrackToPlaylist(
+                            playlist.id,
+                            `spotify:track:${track.id}`
+                          ).then(() => {
+                            dispatch({
+                              type: actionTypes.ADD_TRACK_TO_PLAYLIST,
+                              payload: {
+                                playlistId: playlist.id,
+                                track: track,
+                              },
+                            });
+                          });
+                        }
+                      };
+                      return (
+                        <div
+                          key={track.id}
+                          className="p-1 h-14 flex justify-center "
+                        >
+                          <button onClick={handleToggleTrack} className="">
+                            {isInPlaylist ? (
+                              <Check className="text-primary hover:text-primary/50" />
+                            ) : (
+                              <Plus className="text-accent hover:text-accent/50" />
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </ScrollArea>
+        </Card>
+      </div>
     </div>
   );
 };
