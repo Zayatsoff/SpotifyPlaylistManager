@@ -1,5 +1,3 @@
-# Spotify Playlist Manager
-
 <p float="left">
   <img src="/assets/logo_shadow.png" width="100%" />
 </p>
