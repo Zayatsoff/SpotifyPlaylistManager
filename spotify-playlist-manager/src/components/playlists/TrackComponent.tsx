@@ -12,7 +12,7 @@ const TrackComponent: React.FC<TrackComponentProps> = ({ track }) => {
       <img
         src={track.albumImage || ""}
         alt={track.name}
-        className="w-10 h-10 rounded-full mr-2"
+        className="w-10 h-10 rounded-md mr-3"
       />
 
       <CustomTooltip
