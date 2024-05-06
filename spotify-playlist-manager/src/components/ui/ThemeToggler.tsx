@@ -21,18 +21,20 @@ const ThemeToggler: React.FC = () => {
   }, [theme]);
 
   return (
-    <CustomTooltip
-      children={
-        <div
-          onClick={toggleTheme}
-          className=" text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center"
-        >
-          <Moon className="w-5" />
-        </div>
-      }
-      description={"Change theme"}
-      time={400}
-    />
+    <div className="h-5 flex items-center ">
+      <CustomTooltip
+        children={
+          <div
+            onClick={toggleTheme}
+            className=" text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center"
+          >
+            <Moon className="w-5 " />
+          </div>
+        }
+        description={"Change theme"}
+        time={400}
+      />
+    </div>
   );
 };
 

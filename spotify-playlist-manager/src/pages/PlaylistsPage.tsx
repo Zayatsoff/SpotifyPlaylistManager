@@ -3,12 +3,12 @@ import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
 import ArtistComponent from "@/components/playlists/ArtistComponent";
 import { Track, Playlist } from "../interfaces/PlaylistInterfaces";
-import SideNav from "../components/sideNav/SideNav";
+import SideNav from "@/components/nav/SideNav";
+import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
 import { Plus, Check } from "lucide-react";
-import ThemeToggler from "@/components/ui/ThemeToggler";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 
@@ -191,11 +191,11 @@ const PlaylistsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen  overflow-hidden bg-background">
-      <div className="absolute top-6 right-6 ">
-        <ThemeToggler />
+    <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
+      <div className="w-full h-full row-span-1">
+        <TopNav />
       </div>
-      <div className="w-full h-full grid grid-cols-[auto,1fr] gap-3 p-3 overflow-hidden">
+      <div className="w-full h-full row-span-11 grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
         <SideNav
           playlists={state.playlists}
           selectedPlaylists={state.selectedPlaylists}
