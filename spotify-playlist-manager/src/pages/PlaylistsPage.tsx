@@ -113,7 +113,7 @@ const PlaylistsPage: React.FC = () => {
 
       // Filter to only include playlists where the current user is the owner
       const userOwnedPlaylists = data.items.filter(
-        (playlist) => playlist.owner.id === userData.id
+        (playlist: { owner: { id: any } }) => playlist.owner.id === userData.id
       );
 
       dispatch({
