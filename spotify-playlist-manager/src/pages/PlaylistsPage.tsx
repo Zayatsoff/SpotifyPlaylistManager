@@ -104,12 +104,22 @@ const PlaylistsPage: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const userData = await userResponse.json();
+
       const playlistsResponse = await fetch(
         `https://api.spotify.com/v1/users/${userData.id}/playlists`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await playlistsResponse.json();
-      dispatch({ type: actionTypes.SET_PLAYLISTS, payload: data.items });
+
+      // Filter to only include playlists where the current user is the owner
+      const userOwnedPlaylists = data.items.filter(
+        (playlist) => playlist.owner.id === userData.id
+      );
+
+      dispatch({
+        type: actionTypes.SET_PLAYLISTS,
+        payload: userOwnedPlaylists,
+      });
     };
 
     fetchPlaylists();
