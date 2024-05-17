@@ -20,3 +20,15 @@
 - Inpired by [Playlist Manager](https://github.com/eduardolima93/playlist-manager). I loved the app, but it wasn't getting updated and has some issues.
 
 .
+<<<<<<< Updated upstream
+=======
+
+## Todo
+
+- [x] Add feature: Search within playlist
+- [ ] Add feature: Add new songs to list
+- [ ] Add feature: Duplicate button
+- [ ] Add feature: Statistics page
+- [ ] Add feature: Settings
+- [ ] Add feature: Responsiveness
+>>>>>>> Stashed changes
