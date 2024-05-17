@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
 import ArtistComponent from "@/components/playlists/ArtistComponent";
@@ -11,6 +11,7 @@ import { uniqBy } from "lodash";
 import { Plus, Check } from "lucide-react";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
+import { Input } from "@/components/ui/input";
 
 // Define action types
 const actionTypes = {
@@ -95,6 +96,7 @@ const reducer = (state: State, action: Action) => {
 const PlaylistsPage: React.FC = () => {
   const { token } = useSpotifyAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -166,6 +168,13 @@ const PlaylistsPage: React.FC = () => {
     ),
     (track: Track) => track.id
   );
+  const filteredTracks = allTracks.filter(
+    (track) =>
+      track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      track.artists.some((artist) =>
+        artist.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+  );
 
   const addTrackToPlaylist = async (playlistId: string, trackUri: string) => {
     const response = await fetch(
@@ -213,14 +222,25 @@ const PlaylistsPage: React.FC = () => {
         />
 
         <Card className="flex-1 overflow-hidden">
-          <CardHeader>Edit Playlists</CardHeader>
+          <CardHeader>
+            <div>Edit Playlists</div>
+            <div className="py-3 w-4/5 ">
+              <Input
+                type="text"
+                placeholder="Search for a song in your playlist"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className=" bg-background"
+              />
+            </div>
+          </CardHeader>
           <ScrollArea className="w-full h-full">
             <CardContent className="flex overflow-auto">
               {/* Songs Column */}
               <div className="flex flex-col p-3">
                 <h2 className="font-bold">Song</h2>
                 <div className="flex flex-col gap-6">
-                  {allTracks.map((track: Track) => (
+                  {filteredTracks.map((track: Track) => (
                     <TrackComponent key={track.id} track={track} />
                   ))}
                 </div>
@@ -229,7 +249,7 @@ const PlaylistsPage: React.FC = () => {
               <div className="flex flex-col p-3">
                 <h2 className="font-bold">Artist</h2>
                 <div className="flex flex-col gap-6">
-                  {allTracks.map((track: Track) => (
+                  {filteredTracks.map((track: Track) => (
                     <ArtistComponent key={track.id} track={track} />
                   ))}
                 </div>
@@ -245,7 +265,7 @@ const PlaylistsPage: React.FC = () => {
                     />
                   </h2>
                   <div className="flex flex-col gap-6">
-                    {allTracks.map((track: Track) => {
+                    {filteredTracks.map((track: Track) => {
                       const isInPlaylist = state.playlistTracks[
                         playlist.id
                       ]?.some((pTrack) => pTrack.id === track.id);

@@ -31,4 +31,4 @@
 - [ ] Add feature: Statistics page
 - [ ] Add feature: Settings
 - [ ] Add feature: Responsiveness
->>>>>>> Stashed changes
+  > > > > > > > Stashed changes
