@@ -2,11 +2,21 @@ import { Button } from "@/components/ui/button";
 import ThemeToggler from "@/components/ui/ThemeToggler";
 import { default as Logo } from "@/assets/spm_quick_logo_colour.svg?react";
 import { default as SpotifyLogo } from "@/assets/spotify.svg?react";
+import { getConfig } from "@/utils/getConfig";
+import { useEffect, useState } from "react";
 
 export default function Login() {
   const stateKey = "spotify_auth_state";
-  const client_id = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-  const redirect_uri = import.meta.env.VITE_SPOTIFY_REDIRECT_URI;
+  const [clientId, setClientId] = useState("");
+  const [redirectUri, setRedirectUri] = useState("");
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const config = await getConfig();
+      setClientId(config.clientId);
+      setRedirectUri(config.redirectUri);
+    };
+    fetchConfig();
+  }, []);
   const scope =
     "user-read-private playlist-read-collaborative playlist-read-private playlist-modify-private playlist-modify-public";
 
@@ -27,9 +37,9 @@ export default function Login() {
 
     var url = "https://accounts.spotify.com/authorize";
     url += "?response_type=token";
-    url += "&client_id=" + encodeURIComponent(client_id);
+    url += "&client_id=" + encodeURIComponent(clientId);
     url += "&scope=" + encodeURIComponent(scope);
-    url += "&redirect_uri=" + encodeURIComponent(redirect_uri);
+    url += "&redirect_uri=" + encodeURIComponent(redirectUri);
     url += "&state=" + encodeURIComponent(state);
 
     return url;
