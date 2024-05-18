@@ -16,12 +16,12 @@ interface SideNavProps {
   selectedPlaylists: Playlist[];
   onPlaylistToggle: (playlist: Playlist) => void;
 }
-
 const SideNav: React.FC<SideNavProps> = ({
   playlists,
   selectedPlaylists,
   onPlaylistToggle,
 }) => {
+  const maxPlaylistsSelected = selectedPlaylists.length >= 9;
   return (
     <Card className="w-full h-full bg-card overflow-hidden ">
       <ScrollArea className="w-full h-full ">
@@ -34,12 +34,19 @@ const SideNav: React.FC<SideNavProps> = ({
               );
               const listItemClass = isSelected
                 ? "rounded-xl p-3 bg-primary/30 hover:bg-primary/40 font-semibold flex items-center mb-2 text-lg"
+                : maxPlaylistsSelected
+                ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-lg"
                 : "rounded-xl flex items-center mb-2 p-3 hover:bg-primary/10 text-lg";
+
+              const handleClick = () => {
+                if (!isSelected && maxPlaylistsSelected) return;
+                onPlaylistToggle(playlist);
+              };
               return (
                 <li
                   key={playlist.id}
                   className={listItemClass}
-                  onClick={() => onPlaylistToggle(playlist)}
+                  onClick={handleClick}
                 >
                   {playlist.images && playlist.images.length > 0 ? (
                     <img
