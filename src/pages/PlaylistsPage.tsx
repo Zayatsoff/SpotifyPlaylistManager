@@ -12,6 +12,15 @@ import { Plus, Check } from "lucide-react";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
+import useErrorHandling from "@/hooks/useErrorHandling";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Define action types
 const actionTypes = {
@@ -97,6 +106,9 @@ const PlaylistsPage: React.FC = () => {
   const { token } = useSpotifyAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+
+  useErrorHandling(setShowErrorPopup);
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -211,6 +223,22 @@ const PlaylistsPage: React.FC = () => {
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
+      {/* Error Popup Modal */}
+      {showErrorPopup && (
+        <Dialog open={showErrorPopup} onOpenChange={setShowErrorPopup}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Spotify API blocked 😞</DialogTitle>
+              <DialogDescription>
+                It looks like a browser extension is blocking the Spotify API.
+                Usually, at least for me, it's Privacy Badger blocking{" "}
+                <span className="text-accent">api.spotify.com</span>. Unless you
+                disable it the app can't really access any of you Spotify data.
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      )}
       <div className="w-full h-full row-span-1">
         <TopNav />
       </div>
