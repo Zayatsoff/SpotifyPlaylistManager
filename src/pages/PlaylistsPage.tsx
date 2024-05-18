@@ -227,7 +227,7 @@ const PlaylistsPage: React.FC = () => {
             <div className="py-3 w-4/5 ">
               <Input
                 type="text"
-                placeholder="Search for a song in your playlist"
+                placeholder="Search for a song or arist in your playlist"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className=" bg-background"

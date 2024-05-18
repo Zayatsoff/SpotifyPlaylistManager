@@ -31,3 +31,6 @@
 - [ ] Add feature: Statistics page
 - [ ] Add feature: Settings
 - [ ] Add feature: Responsiveness
+- [ ] Add feature: Sort by
+- [ ] Bug: Add limit to selected playlist
+- [ ] Bug: Keep titles to 2 lines (set height)
