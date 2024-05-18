@@ -201,7 +201,7 @@ const PlaylistsPage: React.FC = () => {
     );
     return response.json();
   };
-
+  const moreThanXPlaylistsSelected = state.selectedPlaylists.length > 8;
   const removeTrackFromPlaylist = async (
     playlistId: string,
     trackUri: string
@@ -222,7 +222,7 @@ const PlaylistsPage: React.FC = () => {
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
-      {/* Error Popup Modal */}
+      {/* Error Popup Dialog */}
       {showErrorPopup && (
         <Dialog open={showErrorPopup} onOpenChange={setShowErrorPopup}>
           <DialogContent>
@@ -257,7 +257,7 @@ const PlaylistsPage: React.FC = () => {
                 placeholder="Search for a song or arist in your playlist"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className=" bg-background"
+                className="bg-background"
               />
             </div>
           </CardHeader>
@@ -265,26 +265,34 @@ const PlaylistsPage: React.FC = () => {
             <CardContent className="flex overflow-auto">
               {/* Songs Column */}
               <div className="flex flex-col p-3">
-                <h2 className="font-bold">Song</h2>
+                <h2 className="font-bold h-14">Song</h2>
                 <div className="flex flex-col gap-6">
                   {filteredTracks.map((track: Track) => (
-                    <TrackComponent key={track.id} track={track} />
+                    <TrackComponent
+                      key={track.id}
+                      track={track}
+                      moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
+                    />
                   ))}
                 </div>
               </div>
               {/* Artists Column */}
               <div className="flex flex-col p-3">
-                <h2 className="font-bold">Artist</h2>
+                <h2 className="font-bold h-14">Artist</h2>
                 <div className="flex flex-col gap-6">
                   {filteredTracks.map((track: Track) => (
-                    <ArtistComponent key={track.id} track={track} />
+                    <ArtistComponent
+                      key={track.id}
+                      track={track}
+                      moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
+                    />
                   ))}
                 </div>
               </div>
               {/* Playlists Columns */}
               {state.selectedPlaylists.map((playlist: Playlist) => (
-                <div key={playlist.id} className="flex flex-col p-3 w-42">
-                  <h2 className="font-bold">
+                <div key={playlist.id} className="flex flex-col p-3 w-42 ">
+                  <h2 className="font-bold h-14">
                     <CustomTooltip
                       children={truncateText(playlist.name, 20)}
                       description={playlist.name}

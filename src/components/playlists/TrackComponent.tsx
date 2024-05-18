@@ -4,9 +4,13 @@ import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 interface TrackComponentProps {
   track: Track;
+  moreThanXPlaylistsSelected: boolean;
 }
 
-const TrackComponent: React.FC<TrackComponentProps> = ({ track }) => {
+const TrackComponent: React.FC<TrackComponentProps> = ({
+  track,
+  moreThanXPlaylistsSelected,
+}) => {
   return (
     <div className="flex p-1 items-center h-14">
       <img
@@ -16,7 +20,11 @@ const TrackComponent: React.FC<TrackComponentProps> = ({ track }) => {
       />
 
       <CustomTooltip
-        children={<div>{truncateText(track.name, 30)}</div>}
+        children={
+          <div>
+            {truncateText(track.name, moreThanXPlaylistsSelected ? 10 : 30)}
+          </div>
+        }
         description={track.name}
         time={300}
       />
