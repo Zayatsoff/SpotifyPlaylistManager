@@ -3,6 +3,7 @@ export interface Track {
   id: string;
   name: string;
   albumImage: string;
+  previewUrl: string; // Add this line
 }
 
 export interface Playlist {

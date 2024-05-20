@@ -33,10 +33,10 @@ const SideNav: React.FC<SideNavProps> = ({
                 (selectedPlaylist) => selectedPlaylist.id === playlist.id
               );
               const listItemClass = isSelected
-                ? "rounded-xl p-3 bg-primary/30 hover:bg-primary/40 font-semibold flex items-center mb-2 text-lg"
+                ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-lg transition-all ease-out"
                 : maxPlaylistsSelected
                 ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-lg"
-                : "rounded-xl flex items-center mb-2 p-3 hover:bg-primary/10 text-lg";
+                : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-lg transition-all ease-out";
 
               const handleClick = () => {
                 if (!isSelected && maxPlaylistsSelected) return;
