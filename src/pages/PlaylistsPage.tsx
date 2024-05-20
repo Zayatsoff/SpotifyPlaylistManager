@@ -8,7 +8,7 @@ import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
-import { Plus, Check } from "lucide-react";
+import { Plus, Check, ArrowUp, ArrowDown } from "lucide-react";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
@@ -106,7 +106,12 @@ const PlaylistsPage: React.FC = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [searchQuery, setSearchQuery] = useState("");
   const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: string | null;
+  }>({ key: "", direction: null });
 
+  // Show error popup if the Spotify API is blocked
   useErrorHandling(setShowErrorPopup);
 
   useEffect(() => {
@@ -179,7 +184,67 @@ const PlaylistsPage: React.FC = () => {
     ),
     (track: Track) => track.id
   );
-  const filteredTracks = allTracks.filter(
+
+  const sortTracks = (
+    tracks: Track[],
+    key: keyof Track | "artist" | "playlist" | string,
+    direction: "ascending" | "descending",
+    playlistId?: string
+  ) => {
+    return tracks.sort((a, b) => {
+      let aValue: string, bValue: string;
+
+      if (playlistId) {
+        const aInPlaylist = state.playlistTracks[playlistId]?.some(
+          (t) => t.id === a.id
+        );
+        const bInPlaylist = state.playlistTracks[playlistId]?.some(
+          (t) => t.id === b.id
+        );
+
+        if (aInPlaylist && !bInPlaylist) return -1;
+        if (!aInPlaylist && bInPlaylist) return 1;
+      }
+
+      if (key === "artist") {
+        aValue = a.artists[0]?.name.toLowerCase();
+        bValue = b.artists[0]?.name.toLowerCase();
+      } else if (key === "playlist") {
+        const aPlaylist = state.selectedPlaylists.find((playlist) =>
+          state.playlistTracks[playlist.id]?.some((t) => t.id === a.id)
+        );
+        const bPlaylist = state.selectedPlaylists.find((playlist) =>
+          state.playlistTracks[playlist.id]?.some((t) => t.id === b.id)
+        );
+        aValue = aPlaylist?.name.toLowerCase() || "";
+        bValue = bPlaylist?.name.toLowerCase() || "";
+      } else if (key === "name") {
+        aValue = a.name.toLowerCase();
+        bValue = b.name.toLowerCase();
+      } else {
+        aValue = (a as any)[key]?.toString().toLowerCase();
+        bValue = (b as any)[key]?.toString().toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return direction === "ascending" ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return direction === "ascending" ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  const sortedTracks = sortConfig.key
+    ? sortTracks(
+        [...allTracks],
+        sortConfig.key as keyof Track | "artist" | "playlist",
+        sortConfig.direction as "ascending" | "descending", // Add type assertion here
+        state.selectedPlaylists.find((p) => p.id === sortConfig.key)?.id
+      )
+    : allTracks;
+  const filteredTracks = sortedTracks.filter(
     (track) =>
       track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       track.artists.some((artist) =>
@@ -218,6 +283,14 @@ const PlaylistsPage: React.FC = () => {
       }
     );
     return response.json();
+  };
+
+  const handleSort = (key: keyof Track | "artist" | "playlist" | string) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
   };
 
   return (
@@ -265,7 +338,18 @@ const PlaylistsPage: React.FC = () => {
             <CardContent className="flex overflow-auto">
               {/* Songs Column */}
               <div className="flex flex-col p-3">
-                <h2 className="font-bold h-14">Song</h2>
+                <h2
+                  className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
+                  onClick={() => handleSort("name")}
+                >
+                  Song{" "}
+                  {sortConfig.key === "name" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ArrowUp className="w-4 h-4" />
+                    ) : (
+                      <ArrowDown className="w-4 h-4" />
+                    ))}
+                </h2>
                 <div className="flex flex-col gap-6">
                   {filteredTracks.map((track: Track) => (
                     <TrackComponent
@@ -278,7 +362,18 @@ const PlaylistsPage: React.FC = () => {
               </div>
               {/* Artists Column */}
               <div className="flex flex-col p-3">
-                <h2 className="font-bold h-14">Artist</h2>
+                <h2
+                  className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
+                  onClick={() => handleSort("artist")}
+                >
+                  Artist{" "}
+                  {sortConfig.key === "artist" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ArrowUp className="w-4 h-4" />
+                    ) : (
+                      <ArrowDown className="w-4 h-4" />
+                    ))}
+                </h2>
                 <div className="flex flex-col gap-6">
                   {filteredTracks.map((track: Track) => (
                     <ArtistComponent
@@ -292,12 +387,21 @@ const PlaylistsPage: React.FC = () => {
               {/* Playlists Columns */}
               {state.selectedPlaylists.map((playlist: Playlist) => (
                 <div key={playlist.id} className="flex flex-col p-3 w-42 ">
-                  <h2 className="font-bold h-14">
+                  <h2
+                    className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
+                    onClick={() => handleSort(playlist.id)}
+                  >
                     <CustomTooltip
                       children={truncateText(playlist.name, 20)}
                       description={playlist.name}
                       time={300}
-                    />
+                    />{" "}
+                    {sortConfig.key === playlist.id &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ArrowUp className="w-4 h-4" />
+                      ) : (
+                        <ArrowUp className="w-4 h-4" />
+                      ))}
                   </h2>
                   <div className="flex flex-col gap-6">
                     {filteredTracks.map((track: Track) => {
