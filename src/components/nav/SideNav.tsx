@@ -52,7 +52,7 @@ const SideNav: React.FC<SideNavProps> = ({
                     <img
                       src={playlist.images[0].url}
                       alt={`${playlist.name} cover`}
-                      className="w-10 h-10 rounded-md mr-2"
+                      className="w-10 h-10 rounded-md mr-2 shadow-md"
                     />
                   ) : (
                     <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground flex items-center justify-center">
