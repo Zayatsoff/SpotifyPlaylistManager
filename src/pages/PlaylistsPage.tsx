@@ -357,7 +357,7 @@ const PlaylistsPage: React.FC = () => {
                       <AArrowDown className="ml-1 w-4 h-4" />
                     )
                   ) : (
-                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted" />
+                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
                   )}
                 </h2>
                 <div className="flex flex-col gap-6">
@@ -384,7 +384,7 @@ const PlaylistsPage: React.FC = () => {
                       <AArrowDown className="ml-1 w-4 h-4" />
                     )
                   ) : (
-                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted" />
+                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
                   )}
                 </h2>
                 <div className="flex flex-col gap-6">
@@ -416,7 +416,7 @@ const PlaylistsPage: React.FC = () => {
                         <ArrowUp className="ml-1 w-4 h-4" />
                       )
                     ) : (
-                      <ArrowUp className="ml-1w-4 h-4 text-muted" />
+                      <ArrowUp className="ml-1w-4 h-4 text-muted-foreground" />
                     )}
                   </h2>
                   <div className="flex flex-col gap-6">
