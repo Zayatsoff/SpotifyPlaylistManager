@@ -8,7 +8,14 @@ import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
-import { Plus, Check, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Plus,
+  Check,
+  ArrowUp,
+  AArrowDown,
+  AArrowUp,
+  ArrowDownUp,
+} from "lucide-react";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
@@ -343,12 +350,15 @@ const PlaylistsPage: React.FC = () => {
                   onClick={() => handleSort("name")}
                 >
                   Song{" "}
-                  {sortConfig.key === "name" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ArrowUp className="w-4 h-4" />
+                  {sortConfig.key === "name" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <AArrowUp className="ml-1 w-4 h-4" />
                     ) : (
-                      <ArrowDown className="w-4 h-4" />
-                    ))}
+                      <AArrowDown className="ml-1 w-4 h-4" />
+                    )
+                  ) : (
+                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted" />
+                  )}
                 </h2>
                 <div className="flex flex-col gap-6">
                   {filteredTracks.map((track: Track) => (
@@ -367,12 +377,15 @@ const PlaylistsPage: React.FC = () => {
                   onClick={() => handleSort("artist")}
                 >
                   Artist{" "}
-                  {sortConfig.key === "artist" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ArrowUp className="w-4 h-4" />
+                  {sortConfig.key === "artist" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <AArrowUp className="ml-1 w-4 h-4" />
                     ) : (
-                      <ArrowDown className="w-4 h-4" />
-                    ))}
+                      <AArrowDown className="ml-1 w-4 h-4" />
+                    )
+                  ) : (
+                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted" />
+                  )}
                 </h2>
                 <div className="flex flex-col gap-6">
                   {filteredTracks.map((track: Track) => (
@@ -396,12 +409,15 @@ const PlaylistsPage: React.FC = () => {
                       description={playlist.name}
                       time={300}
                     />{" "}
-                    {sortConfig.key === playlist.id &&
-                      (sortConfig.direction === "ascending" ? (
-                        <ArrowUp className="w-4 h-4" />
+                    {sortConfig.key === playlist.id ? (
+                      sortConfig.direction === "ascending" ? (
+                        <ArrowUp className="ml-1 w-4 h-4" />
                       ) : (
-                        <ArrowUp className="w-4 h-4" />
-                      ))}
+                        <ArrowUp className="ml-1 w-4 h-4" />
+                      )
+                    ) : (
+                      <ArrowUp className="ml-1w-4 h-4 text-muted" />
+                    )}
                   </h2>
                   <div className="flex flex-col gap-6">
                     {filteredTracks.map((track: Track) => {
