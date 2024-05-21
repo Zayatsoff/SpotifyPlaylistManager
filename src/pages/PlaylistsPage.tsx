@@ -339,7 +339,7 @@ const PlaylistsPage: React.FC = () => {
           onPlaylistToggle={handlePlaylistToggle}
         />
 
-        <Card className="flex-1 overflow-hidden">
+        <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
             <div className="py-3 w-4/5 ">
@@ -352,10 +352,10 @@ const PlaylistsPage: React.FC = () => {
               />
             </div>
           </CardHeader>
-          <ScrollArea className="w-full h-full flex">
-            <CardContent className="h-full flex overflow-auto">
+          <ScrollArea className="w-full h-full flex flex-col overflow-auto">
+            <CardContent className="w-full h-full flex overflow-auto p-3">
               {/* Songs Column */}
-              <div className="flex flex-col p-3">
+              <div className="flex flex-col ">
                 <h2
                   className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                   onClick={() => handleSort("name")}
@@ -384,7 +384,7 @@ const PlaylistsPage: React.FC = () => {
                 </div>
               </div>
               {/* Artists Column */}
-              <div className="flex flex-col p-3">
+              <div className="flex flex-col ">
                 <h2
                   className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                   onClick={() => handleSort("artist")}
@@ -412,7 +412,7 @@ const PlaylistsPage: React.FC = () => {
               </div>
               {/* Playlists Columns */}
               {state.selectedPlaylists.map((playlist: Playlist) => (
-                <div key={playlist.id} className="flex flex-col p-3 w-42 ">
+                <div key={playlist.id} className="flex flex-col  w-42 ">
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                     onClick={() => handleSort(playlist.id)}
