@@ -18,7 +18,7 @@ export default function TopNav() {
                 href="https://github.com/Zayatsoff/SpotifyPlaylistManager"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center"
+                className="text-foreground rounded-full hover:bg-accent/30 w-8 h-8 flex items-center justify-center transition-all ease-out"
               >
                 <Github className="w-5" />
               </a>
@@ -30,7 +30,7 @@ export default function TopNav() {
         <div className="h-5 flex items-center">
           <CustomTooltip
             children={
-              <div className=" text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center">
+              <div className=" text-foreground rounded-full hover:bg-accent/30 w-8 h-8 flex items-center justify-center transition-all ease-out">
                 <Settings className="w-5" />
               </div>
             }

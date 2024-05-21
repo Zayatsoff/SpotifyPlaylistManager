@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
 
 // Define action types
 const actionTypes = {
@@ -117,6 +118,8 @@ const PlaylistsPage: React.FC = () => {
     key: string;
     direction: string | null;
   }>({ key: "", direction: null });
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   // Show error popup if the Spotify API is blocked
   useErrorHandling(setShowErrorPopup);
@@ -167,6 +170,7 @@ const PlaylistsPage: React.FC = () => {
               name: artist.name,
             })),
             albumImage: item.track.album.images[0]?.url || "",
+            previewUrl: item.track.preview_url || "", // Add previewUrl
           }));
           dispatch({
             type: actionTypes.SET_TRACKS,
@@ -178,11 +182,13 @@ const PlaylistsPage: React.FC = () => {
     });
   }, [state.selectedPlaylists, token]);
 
-  const handlePlaylistToggle = (playlist: Playlist): void => {
-    dispatch({
-      type: actionTypes.TOGGLE_PLAYLIST_SELECTION,
-      payload: playlist,
-    });
+  const handlePlayPreview = (track: Track) => {
+    if (currentTrack && currentTrack.id === track.id) {
+      setIsPlaying(!isPlaying);
+    } else {
+      setCurrentTrack(track);
+      setIsPlaying(true);
+    }
   };
 
   const allTracks = uniqBy(
@@ -191,7 +197,12 @@ const PlaylistsPage: React.FC = () => {
     ),
     (track: Track) => track.id
   );
-
+  const handlePlaylistToggle = (playlist: Playlist): void => {
+    dispatch({
+      type: actionTypes.TOGGLE_PLAYLIST_SELECTION,
+      payload: playlist,
+    });
+  };
   const sortTracks = (
     tracks: Track[],
     key: keyof Track | "artist" | "playlist" | string,
@@ -328,7 +339,7 @@ const PlaylistsPage: React.FC = () => {
           onPlaylistToggle={handlePlaylistToggle}
         />
 
-        <Card className="flex-1 overflow-hidden">
+        <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
             <div className="py-3 w-4/5 ">
@@ -341,10 +352,10 @@ const PlaylistsPage: React.FC = () => {
               />
             </div>
           </CardHeader>
-          <ScrollArea className="w-full h-full">
-            <CardContent className="flex overflow-auto">
+          <ScrollArea className="w-full h-full flex flex-col overflow-auto">
+            <CardContent className="w-full h-full flex overflow-auto p-3">
               {/* Songs Column */}
-              <div className="flex flex-col p-3">
+              <div className="flex flex-col ">
                 <h2
                   className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                   onClick={() => handleSort("name")}
@@ -366,12 +377,14 @@ const PlaylistsPage: React.FC = () => {
                       key={track.id}
                       track={track}
                       moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
+                      isPlaying={currentTrack?.id === track.id && isPlaying} // Pass isPlaying prop
+                      onPlayPreview={handlePlayPreview}
                     />
                   ))}
                 </div>
               </div>
               {/* Artists Column */}
-              <div className="flex flex-col p-3">
+              <div className="flex flex-col ">
                 <h2
                   className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                   onClick={() => handleSort("artist")}
@@ -399,7 +412,7 @@ const PlaylistsPage: React.FC = () => {
               </div>
               {/* Playlists Columns */}
               {state.selectedPlaylists.map((playlist: Playlist) => (
-                <div key={playlist.id} className="flex flex-col p-3 w-42 ">
+                <div key={playlist.id} className="flex flex-col  w-42 ">
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                     onClick={() => handleSort(playlist.id)}
@@ -475,6 +488,14 @@ const PlaylistsPage: React.FC = () => {
           </ScrollArea>
         </Card>
       </div>
+      {/* Render the SpotifyPreviewPlayer if there is a currentTrack */}
+      {currentTrack && (
+        <SpotifyPreviewPlayer
+          track={currentTrack}
+          isPlaying={isPlaying}
+          onPlayPreview={handlePlayPreview}
+        />
+      )}
     </div>
   );
 };

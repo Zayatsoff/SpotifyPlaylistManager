@@ -26,7 +26,7 @@ const ThemeToggler: React.FC = () => {
         children={
           <div
             onClick={toggleTheme}
-            className=" text-foreground rounded-full hover:bg-primary/30 w-8 h-8 flex items-center justify-center"
+            className=" text-foreground rounded-full hover:bg-accent/30 w-8 h-8 flex items-center justify-center transition-all ease-out"
           >
             <Moon className="w-5 " />
           </div>
