@@ -1,10 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
-import { Music } from "lucide-react";
-
+import { Music, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button"; 
 interface Playlist {
   id: string;
   name: string;
@@ -15,16 +23,43 @@ interface SideNavProps {
   playlists: Playlist[] | null;
   selectedPlaylists: Playlist[];
   onPlaylistToggle: (playlist: Playlist) => void;
+  onDeletePlaylist: (playlistId: string) => void;
 }
+
 const SideNav: React.FC<SideNavProps> = ({
   playlists,
   selectedPlaylists,
   onPlaylistToggle,
+  onDeletePlaylist,
 }) => {
+  const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
+
   const maxPlaylistsSelected = selectedPlaylists.length >= 9;
+
+  const handleDeleteClick = (e: React.MouseEvent, playlistId: string) => {
+    e.stopPropagation();
+    setPlaylistToDelete(playlistId);
+    setIsDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (playlistToDelete) {
+      onDeletePlaylist(playlistToDelete);
+      setPlaylistToDelete(null);
+      setIsDialogOpen(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setPlaylistToDelete(null);
+    setIsDialogOpen(false);
+  };
+
   return (
-    <Card className="w-full h-full bg-card overflow-hidden ">
-      <ScrollArea className="w-full h-full ">
+    <Card className="w-full h-full bg-card overflow-hidden">
+      <ScrollArea className="w-full h-full">
         <CardHeader>Playlists</CardHeader>
         <CardContent>
           <ul>
@@ -42,11 +77,14 @@ const SideNav: React.FC<SideNavProps> = ({
                 if (!isSelected && maxPlaylistsSelected) return;
                 onPlaylistToggle(playlist);
               };
+
               return (
                 <li
                   key={playlist.id}
                   className={listItemClass}
                   onClick={handleClick}
+                  onMouseEnter={() => setHoveredPlaylist(playlist.id)}
+                  onMouseLeave={() => setHoveredPlaylist(null)}
                 >
                   {playlist.images && playlist.images.length > 0 ? (
                     <img
@@ -66,12 +104,36 @@ const SideNav: React.FC<SideNavProps> = ({
                       time={300}
                     />
                   </span>
+                  {hoveredPlaylist === playlist.id && (
+                    <Trash2
+                      className="ml-auto cursor-pointer text-red-500 hover:text-red-700"
+                      onClick={(e) => handleDeleteClick(e, playlist.id)}
+                    />
+                  )}
                 </li>
               );
             })}
           </ul>
         </CardContent>
       </ScrollArea>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <span></span>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you absolutely sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your playlist and remove your data from Spotify servers.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <Button className="mr-2" onClick={handleConfirmDelete}>Yes</Button>
+            <Button variant="secondary" onClick={handleCancelDelete}>No</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
