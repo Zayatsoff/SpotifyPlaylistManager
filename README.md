@@ -25,11 +25,11 @@
 - [x] Bug: Keep titles to 2 lines (set height)
 - [x] Bug: Add limit to selected playlist
 - [x] Add feature: Sort by
-- [ ] Add feature: Song preview
+- [x] Add feature: Song preview
+- [ ] Add feature: Option to rename, delete, and combine playlists playlists
 - [ ] Add feature: Optional pagination
 - [ ] Add feature: Add new songs to list
 - [ ] Add feature: Duplicate button
-- [ ] Add feature: Option to rename and delete playlists
 - [ ] Add feature: Statistics page
 - [ ] Add feature: Settings
 - [ ] Add feature: Responsiveness
