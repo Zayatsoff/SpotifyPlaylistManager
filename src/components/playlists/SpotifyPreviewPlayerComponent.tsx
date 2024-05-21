@@ -155,24 +155,28 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
         alt={track.name}
         className="w-20 h-20 rounded-md mr-3 shadow-md"
       />
+      <div className="flex flex-col mr-3">
+        <span className="text-lg font-bold text-foreground">{track.name}</span>
+        <span className="text-sm text-foreground">{track.artists[0].name}</span>
+      </div>
       <button onClick={() => onPlayPreview(track)} className="mr-3">
         {isPlaying ? (
-          <div className="w-8 h-8 bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
+          <div className="w-8 h-8 text-foreground bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
             <Pause className="w-5 h-5 " />
           </div>
         ) : (
-          <div className="w-8 h-8 bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
+          <div className="w-8 h-8 text-foreground bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
             <Play className="w-5 h-5  " />
           </div>
         )}
       </button>
       <div
-        className="flex-1 h-1 bg-muted rounded relative"
+        className=" w-full flex-1 h-1 bg-muted rounded relative mr-6"
         onClick={handleProgressClick}
         ref={progressBarRef}
       >
         <div
-          className="h-full bg-accent rounded relative"
+          className="w-full h-full bg-accent rounded relative"
           style={{ width: `${progress}%` }}
         >
           <div
