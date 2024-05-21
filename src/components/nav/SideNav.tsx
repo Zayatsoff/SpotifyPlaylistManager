@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
-import { Music, Trash2 } from "lucide-react";
+import { Music, Trash2, Edit3 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+
 interface Playlist {
   id: string;
   name: string;
@@ -24,6 +27,7 @@ interface SideNavProps {
   selectedPlaylists: Playlist[];
   onPlaylistToggle: (playlist: Playlist) => void;
   onDeletePlaylist: (playlistId: string) => void;
+  onRenamePlaylist: (playlistId: string, newName: string) => void;
 }
 
 const SideNav: React.FC<SideNavProps> = ({
@@ -31,10 +35,14 @@ const SideNav: React.FC<SideNavProps> = ({
   selectedPlaylists,
   onPlaylistToggle,
   onDeletePlaylist,
+  onRenamePlaylist,
 }) => {
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
+  const [playlistToRename, setPlaylistToRename] = useState<string | null>(null);
+  const [newPlaylistName, setNewPlaylistName] = useState<string>("");
+  const [renamePosition, setRenamePosition] = useState<{ top: number; left: number } | null>(null);
 
   const maxPlaylistsSelected = selectedPlaylists.length >= 9;
 
@@ -42,6 +50,26 @@ const SideNav: React.FC<SideNavProps> = ({
     e.stopPropagation();
     setPlaylistToDelete(playlistId);
     setIsDialogOpen(true);
+  };
+
+  const handleRenameClick = (e: React.MouseEvent, playlistId: string, playlistName: string) => {
+    e.stopPropagation();
+    setPlaylistToRename(playlistId);
+    setNewPlaylistName(playlistName);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setRenamePosition({ top: rect.top, left: rect.left });
+  };
+
+  const handleRenameSave = () => {
+    if (playlistToRename && newPlaylistName) {
+      onRenamePlaylist(playlistToRename, newPlaylistName);
+      setPlaylistToRename(null);
+    }
+  };
+
+  const handleCancelRename = () => {
+    setPlaylistToRename(null);
+    setNewPlaylistName("");
   };
 
   const handleConfirmDelete = () => {
@@ -61,8 +89,8 @@ const SideNav: React.FC<SideNavProps> = ({
     <Card className="w-full h-full bg-card overflow-hidden">
       <ScrollArea className="w-full h-full">
         <CardHeader>Playlists</CardHeader>
-        <CardContent >
-          <ul >
+        <CardContent>
+          <ul>
             {playlists?.map((playlist) => {
               const isSelected = selectedPlaylists.some(
                 (selectedPlaylist) => selectedPlaylist.id === playlist.id
@@ -72,10 +100,12 @@ const SideNav: React.FC<SideNavProps> = ({
                 : maxPlaylistsSelected
                 ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
                 : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
-                const trashClass = hoveredPlaylist === playlist.id
-                ? "w-5 h-5 ml-auto cursor-pointer text-destructive hover:text-foreground transition-all "
-                : "w-5 h-5 ml-auto cursor-pointer text-card "
-                
+              const trashClass = hoveredPlaylist === playlist.id
+                ? "w-5 h-5 ml-2 cursor-pointer text-destructive hover:text-foreground transition-all"
+                : "w-5 h-5 ml-2 cursor-pointer text-destructive/0";
+              const editClass = hoveredPlaylist === playlist.id
+                ? "w-5 h-5 ml-auto cursor-pointer text-primary hover:text-foreground transition-all"
+                : "w-5 h-5 ml-auto cursor-pointer text-primary/0";
 
               const handleClick = () => {
                 if (!isSelected && maxPlaylistsSelected) return;
@@ -85,7 +115,7 @@ const SideNav: React.FC<SideNavProps> = ({
               return (
                 <li
                   key={playlist.id}
-                  className={listItemClass }
+                  className={listItemClass}
                   onClick={handleClick}
                   onMouseEnter={() => setHoveredPlaylist(playlist.id)}
                   onMouseLeave={() => setHoveredPlaylist(null)}
@@ -97,7 +127,7 @@ const SideNav: React.FC<SideNavProps> = ({
                       className="w-10 h-10 rounded-md mr-2 shadow-md"
                     />
                   ) : (
-                    <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground flex items-center justify-center ">
+                    <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground flex items-center justify-center">
                       <Music />
                     </div>
                   )}
@@ -108,12 +138,14 @@ const SideNav: React.FC<SideNavProps> = ({
                       time={300}
                     />
                   </span>
-                  
-                    <Trash2
-                      className={`${trashClass} `}
-                      onClick={(e) => handleDeleteClick(e, playlist.id)}
-                    />
-                  
+                  <Edit3
+                    className={`${editClass}`}
+                    onClick={(e) => handleRenameClick(e, playlist.id, playlist.name)}
+                  />
+                  <Trash2
+                    className={`${trashClass}`}
+                    onClick={(e) => handleDeleteClick(e, playlist.id)}
+                  />
                 </li>
               );
             })}
@@ -138,6 +170,35 @@ const SideNav: React.FC<SideNavProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+      {playlistToRename && renamePosition && (
+        <Popover open={Boolean(playlistToRename)} onOpenChange={() => setPlaylistToRename(null)}>
+          <PopoverTrigger asChild>
+            <span></span>
+          </PopoverTrigger>
+          <PopoverContent
+            className="transform"
+            style={{
+              position: "fixed",
+              top: renamePosition.top - 50, // Adjust this value as needed to position above
+              left: renamePosition.left,
+            }}
+          >
+            <div className="flex flex-col p-4">
+              <Input
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="New playlist name"
+                className="mb-2"
+              />
+              <div className="flex justify-end">
+                <Button className="mr-2" onClick={handleRenameSave}>Save</Button>
+                <Button variant="secondary" onClick={handleCancelRename}>Cancel</Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </Card>
   );
 };

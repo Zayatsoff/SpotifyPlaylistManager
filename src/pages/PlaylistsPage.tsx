@@ -268,6 +268,26 @@ const PlaylistsPage: React.FC = () => {
       return 0;
     });
   };
+
+  const handleRenamePlaylist = async (playlistId: string, newName: string) => {
+    await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: newName }),
+    });
+    dispatch({
+      type: actionTypes.SET_PLAYLISTS,
+      payload: state.playlists.map((playlist) =>
+        playlist.id === playlistId ? { ...playlist, name: newName } : playlist
+      ),
+    });
+  };
+
+  
+
   const handleDeletePlaylist = async (playlistId: string) => {
     await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/followers`, {
       method: "DELETE",
@@ -362,6 +382,7 @@ const PlaylistsPage: React.FC = () => {
           selectedPlaylists={state.selectedPlaylists}
           onPlaylistToggle={handlePlaylistToggle}
           onDeletePlaylist={handleDeletePlaylist}
+  onRenamePlaylist={handleRenamePlaylist} 
         />
 
         <Card className="flex flex-col w-full h-full overflow-hidden">
