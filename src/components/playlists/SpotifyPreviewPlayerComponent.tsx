@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Track } from "../../interfaces/PlaylistInterfaces";
 import { Play, Pause } from "lucide-react";
 
@@ -14,20 +14,55 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
   onPlayPreview,
 }) => {
   const [progress, setProgress] = useState(0);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackRef = useRef<Track | null>(null);
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.src = track.previewUrl;
+      const audioElement = audioRef.current;
+
+      if (currentTrackRef.current !== track) {
+        audioElement.pause();
+        audioElement.src = track.previewUrl;
+        audioElement.load(); // Ensure the new source is loaded
+        currentTrackRef.current = track;
+      }
+
+      const handleCanPlayThrough = () => {
+        if (isPlaying) {
+          const playPromise = audioElement.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((e) => {
+              console.error("Error playing audio:", e);
+            });
+          }
+        }
+      };
+
+      audioElement.addEventListener("canplaythrough", handleCanPlayThrough);
+
+      return () => {
+        audioElement.removeEventListener(
+          "canplaythrough",
+          handleCanPlayThrough
+        );
+      };
     }
-  }, [track]);
+  }, [track, isPlaying]);
 
   useEffect(() => {
     if (audioRef.current) {
+      const audioElement = audioRef.current;
+
       if (isPlaying) {
-        audioRef.current.play();
+        const playPromise = audioElement.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            console.error("Error playing audio:", e);
+          });
+        }
       } else {
-        audioRef.current.pause();
+        audioElement.pause();
       }
     }
   }, [isPlaying]);
@@ -36,13 +71,20 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
     if (audioRef.current) {
       const handleTimeUpdate = () => {
         if (audioRef.current) {
-          setProgress((audioRef.current.currentTime / 30) * 100);
+          const currentTime = (
+            (audioRef.current.currentTime / 30) *
+            100
+          ).toFixed(1);
+          setProgress(parseFloat(currentTime));
         }
       };
+
+      const interval = setInterval(handleTimeUpdate, 50); // Update progress every 50ms
 
       audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
 
       return () => {
+        clearInterval(interval);
         if (audioRef.current) {
           audioRef.current.removeEventListener("timeupdate", handleTimeUpdate);
         }
@@ -51,7 +93,7 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
   }, [isPlaying]);
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center px-3 pb-3">
       <img
         src={track.albumImage || ""}
         alt={track.name}
@@ -68,9 +110,9 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
           </div>
         )}
       </button>
-      <div className="flex-1 h-1 bg-gray-300 rounded">
+      <div className="flex-1 h-1 bg-muted rounded">
         <div
-          className="h-full bg-blue-500 rounded"
+          className="h-full bg-accent rounded"
           style={{ width: `${progress}%` }}
         />
       </div>
