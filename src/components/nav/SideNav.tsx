@@ -61,17 +61,21 @@ const SideNav: React.FC<SideNavProps> = ({
     <Card className="w-full h-full bg-card overflow-hidden">
       <ScrollArea className="w-full h-full">
         <CardHeader>Playlists</CardHeader>
-        <CardContent>
-          <ul>
+        <CardContent >
+          <ul >
             {playlists?.map((playlist) => {
               const isSelected = selectedPlaylists.some(
                 (selectedPlaylist) => selectedPlaylist.id === playlist.id
               );
               const listItemClass = isSelected
-                ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-lg transition-all ease-out"
+                ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-md transition-all ease-out"
                 : maxPlaylistsSelected
-                ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-lg"
-                : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-lg transition-all ease-out";
+                ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
+                : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
+                const trashClass = hoveredPlaylist === playlist.id
+                ? "w-5 h-5 ml-auto cursor-pointer text-destructive hover:text-foreground transition-all "
+                : "w-5 h-5 ml-auto cursor-pointer text-card "
+                
 
               const handleClick = () => {
                 if (!isSelected && maxPlaylistsSelected) return;
@@ -81,7 +85,7 @@ const SideNav: React.FC<SideNavProps> = ({
               return (
                 <li
                   key={playlist.id}
-                  className={listItemClass}
+                  className={listItemClass }
                   onClick={handleClick}
                   onMouseEnter={() => setHoveredPlaylist(playlist.id)}
                   onMouseLeave={() => setHoveredPlaylist(null)}
@@ -93,7 +97,7 @@ const SideNav: React.FC<SideNavProps> = ({
                       className="w-10 h-10 rounded-md mr-2 shadow-md"
                     />
                   ) : (
-                    <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground flex items-center justify-center">
+                    <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground flex items-center justify-center ">
                       <Music />
                     </div>
                   )}
@@ -104,12 +108,12 @@ const SideNav: React.FC<SideNavProps> = ({
                       time={300}
                     />
                   </span>
-                  {hoveredPlaylist === playlist.id && (
+                  
                     <Trash2
-                      className="ml-auto cursor-pointer text-red-500 hover:text-red-700"
+                      className={`${trashClass} `}
                       onClick={(e) => handleDeleteClick(e, playlist.id)}
                     />
-                  )}
+                  
                 </li>
               );
             })}
