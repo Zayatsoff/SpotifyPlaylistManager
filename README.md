@@ -26,7 +26,9 @@
 - [x] Bug: Add limit to selected playlist
 - [x] Add feature: Sort by
 - [x] Add feature: Song preview
-- [ ] Add feature: Option to rename, delete, and combine playlists playlists
+- [x] Add feature: Option to rename and delete playlists
+- [ ] Add feature: Replace album cover
+- [ ] Add feature: Combine playlists
 - [ ] Add feature: Optional pagination
 - [ ] Add feature: Add new songs to list
 - [ ] Add feature: Duplicate button

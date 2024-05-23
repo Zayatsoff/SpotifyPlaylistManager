@@ -36,6 +36,7 @@ const actionTypes = {
   SET_TRACKS: "SET_TRACKS",
   ADD_TRACK_TO_PLAYLIST: "ADD_TRACK_TO_PLAYLIST",
   REMOVE_TRACK_FROM_PLAYLIST: "REMOVE_TRACK_FROM_PLAYLIST",
+  DELETE_PLAYLIST: "DELETE_PLAYLIST",
 };
 // Define the initial state with the correct types
 const initialState = {
@@ -102,6 +103,20 @@ const reducer = (state: State, action: Action) => {
           ...state.playlistTracks,
           [action.payload.playlistId]: updatedTracks,
         },
+      };
+      case actionTypes.DELETE_PLAYLIST:
+      return {
+        ...state,
+        playlists: state.playlists.filter((p) => p.id !== action.payload),
+        selectedPlaylists: state.selectedPlaylists.filter(
+          (p) => p.id !== action.payload
+        ),
+        playlistTracks: Object.keys(state.playlistTracks).reduce((acc, key) => {
+          if (key !== action.payload) {
+            acc[key] = state.playlistTracks[key];
+          }
+          return acc;
+        }, {} as Record<string, Track[]>),
       };
 
     default:
@@ -254,6 +269,35 @@ const PlaylistsPage: React.FC = () => {
     });
   };
 
+  const handleRenamePlaylist = async (playlistId: string, newName: string) => {
+    await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: newName }),
+    });
+    dispatch({
+      type: actionTypes.SET_PLAYLISTS,
+      payload: state.playlists.map((playlist) =>
+        playlist.id === playlistId ? { ...playlist, name: newName } : playlist
+      ),
+    });
+  };
+
+  
+
+  const handleDeletePlaylist = async (playlistId: string) => {
+    await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/followers`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    dispatch({
+      type: actionTypes.DELETE_PLAYLIST,
+      payload: playlistId,
+    });
+  };
   const sortedTracks = sortConfig.key
     ? sortTracks(
         [...allTracks],
@@ -333,10 +377,12 @@ const PlaylistsPage: React.FC = () => {
         <TopNav />
       </div>
       <div className="w-full h-full row-span-11 grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
-        <SideNav
+      <SideNav
           playlists={state.playlists}
           selectedPlaylists={state.selectedPlaylists}
           onPlaylistToggle={handlePlaylistToggle}
+          onDeletePlaylist={handleDeletePlaylist}
+  onRenamePlaylist={handleRenamePlaylist} 
         />
 
         <Card className="flex flex-col w-full h-full overflow-hidden">
