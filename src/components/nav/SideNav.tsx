@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { truncateText } from "@/utils/textHelpers";
@@ -43,6 +43,7 @@ const SideNav: React.FC<SideNavProps> = ({
   const [playlistToRename, setPlaylistToRename] = useState<string | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState<string>("");
   const [renamePosition, setRenamePosition] = useState<{ top: number; left: number } | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const maxPlaylistsSelected = selectedPlaylists.length >= 9;
 
@@ -57,19 +58,23 @@ const SideNav: React.FC<SideNavProps> = ({
     setPlaylistToRename(playlistId);
     setNewPlaylistName(playlistName);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setRenamePosition({ top: rect.top, left: rect.left });
+    const newPosition = { top: rect.top + rect.height, left: rect.left };
+    setRenamePosition(newPosition);
+    setPopoverOpen(true);
   };
 
   const handleRenameSave = () => {
     if (playlistToRename && newPlaylistName) {
       onRenamePlaylist(playlistToRename, newPlaylistName);
       setPlaylistToRename(null);
+      setPopoverOpen(false);
     }
   };
 
   const handleCancelRename = () => {
     setPlaylistToRename(null);
     setNewPlaylistName("");
+    setPopoverOpen(false);
   };
 
   const handleConfirmDelete = () => {
@@ -83,6 +88,10 @@ const SideNav: React.FC<SideNavProps> = ({
   const handleCancelDelete = () => {
     setPlaylistToDelete(null);
     setIsDialogOpen(false);
+  };
+
+  const handlePopoverOpenChange = (isOpen: boolean) => {
+    setPopoverOpen(isOpen);
   };
 
   return (
@@ -138,10 +147,38 @@ const SideNav: React.FC<SideNavProps> = ({
                       time={300}
                     />
                   </span>
-                  <Edit3
-                    className={`${editClass}`}
-                    onClick={(e) => handleRenameClick(e, playlist.id, playlist.name)}
-                  />
+                  <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
+                    <PopoverTrigger asChild>
+                      <Edit3
+                        className={`${editClass}`}
+                        onClick={(e) => handleRenameClick(e, playlist.id, playlist.name)}
+                      />
+                    </PopoverTrigger>
+                    {popoverOpen && playlistToRename === playlist.id && renamePosition && (
+                      <PopoverContent
+                        className="transform"
+                        style={{
+                          position: "absolute",
+                          top: -30,
+                        }}
+                      >
+                        <div className="flex flex-col p-4">
+                          <div className="text-foreground text-md pb-3">Rename <span className="font-semibold">{playlist.name} </span>:</div>
+                          <Input
+                            type="text"
+                            value={newPlaylistName}
+                            onChange={(e) => setNewPlaylistName(e.target.value)}
+                            placeholder="New playlist name"
+                            className="mb-2"
+                          />
+                          <div className="pt-3 flex justify-end items-center">
+                            <Button className="mr-2" onClick={handleRenameSave}>Save</Button>
+                            <Button variant="secondary" onClick={handleCancelRename}>Cancel</Button>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    )}
+                  </Popover>
                   <Trash2
                     className={`${trashClass}`}
                     onClick={(e) => handleDeleteClick(e, playlist.id)}
@@ -170,35 +207,6 @@ const SideNav: React.FC<SideNavProps> = ({
           </div>
         </DialogContent>
       </Dialog>
-      {playlistToRename && renamePosition && (
-        <Popover open={Boolean(playlistToRename)} onOpenChange={() => setPlaylistToRename(null)}>
-          <PopoverTrigger asChild>
-            <span></span>
-          </PopoverTrigger>
-          <PopoverContent
-            className="transform"
-            style={{
-              position: "fixed",
-              top: renamePosition.top - 50, // Adjust this value as needed to position above
-              left: renamePosition.left,
-            }}
-          >
-            <div className="flex flex-col p-4">
-              <Input
-                type="text"
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                placeholder="New playlist name"
-                className="mb-2"
-              />
-              <div className="flex justify-end">
-                <Button className="mr-2" onClick={handleRenameSave}>Save</Button>
-                <Button variant="secondary" onClick={handleCancelRename}>Cancel</Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
     </Card>
   );
 };
