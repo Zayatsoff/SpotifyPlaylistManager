@@ -27,7 +27,7 @@
 - [x] Add feature: Sort by
 - [x] Add feature: Song preview
 - [x] Add feature: Option to rename and delete playlists
-- [x] Add feature: Replace album cover
+- [ ] Add feature: Replace album cover
 - [ ] Add feature: Combine playlists
 - [ ] Add feature: Optional pagination
 - [ ] Add feature: Add new songs to list
