@@ -110,8 +110,8 @@ const SideNav: React.FC<SideNavProps> = ({
                 ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
                 : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
               const trashClass = hoveredPlaylist === playlist.id
-                ? "w-5 h-5 ml-2 cursor-pointer text-destructive hover:text-foreground transition-all"
-                : "w-5 h-5 ml-2 cursor-pointer text-destructive/0";
+                ? "w-5 h-5  cursor-pointer text-destructive hover:text-foreground transition-all"
+                : "w-5 h-5 cursor-pointer text-destructive/0";
               const editClass = hoveredPlaylist === playlist.id
                 ? "w-5 h-5 ml-auto cursor-pointer text-primary hover:text-foreground transition-all"
                 : "w-5 h-5 ml-auto cursor-pointer text-primary/0";
@@ -149,10 +149,14 @@ const SideNav: React.FC<SideNavProps> = ({
                   </span>
                   <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
                     <PopoverTrigger asChild>
-                      <Edit3
+                    <div className={`${editClass}`}><CustomTooltip 
+                      children={<Edit3
                         className={`${editClass}`}
                         onClick={(e) => handleRenameClick(e, playlist.id, playlist.name)}
-                      />
+                      />}
+                      description="Rename"
+                      time={300}
+                    /></div>
                     </PopoverTrigger>
                     {popoverOpen && playlistToRename === playlist.id && renamePosition && (
                       <PopoverContent
@@ -179,10 +183,14 @@ const SideNav: React.FC<SideNavProps> = ({
                       </PopoverContent>
                     )}
                   </Popover>
-                  <Trash2
-                    className={`${trashClass}`}
+                  <div className={`${trashClass} `}><CustomTooltip 
+                      children={<Trash2
+                    className={`${trashClass} ml-2`}
                     onClick={(e) => handleDeleteClick(e, playlist.id)}
-                  />
+                  />}
+                  description="Delete"
+                  time={300}
+                /></div>
                 </li>
               );
             })}
