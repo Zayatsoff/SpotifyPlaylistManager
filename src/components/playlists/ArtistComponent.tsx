@@ -20,7 +20,7 @@ const ArtistComponent: React.FC<ArtistComponentProps> = ({
       <CustomTooltip
         children={
           <div>
-            {truncateText(artistNames, moreThanXPlaylistsSelected ? 10 : 20)}
+            {truncateText(artistNames, moreThanXPlaylistsSelected ? 5 : 10)}
           </div>
         }
         description={artistNames}

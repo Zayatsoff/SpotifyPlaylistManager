@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState } from "react";
+import React, { useEffect, useReducer, useState, useRef } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
 import ArtistComponent from "@/components/playlists/ArtistComponent";
@@ -8,25 +8,12 @@ import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
-import {
-  Plus,
-  Check,
-  ArrowUp,
-  AArrowDown,
-  AArrowUp,
-  ArrowDownUp,
-} from "lucide-react";
+import { Plus, Check, ArrowUp, ArrowDownUp } from "lucide-react";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
 import useErrorHandling from "@/hooks/useErrorHandling";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
 
 // Define action types
@@ -38,11 +25,12 @@ const actionTypes = {
   REMOVE_TRACK_FROM_PLAYLIST: "REMOVE_TRACK_FROM_PLAYLIST",
   DELETE_PLAYLIST: "DELETE_PLAYLIST",
 };
+
 // Define the initial state with the correct types
 const initialState = {
   playlists: [],
   selectedPlaylists: [],
-  playlistTracks: {},
+  playlistTracks: {} as Record<string, Track[]>,
 };
 
 interface State {
@@ -104,7 +92,7 @@ const reducer = (state: State, action: Action) => {
           [action.payload.playlistId]: updatedTracks,
         },
       };
-      case actionTypes.DELETE_PLAYLIST:
+    case actionTypes.DELETE_PLAYLIST:
       return {
         ...state,
         playlists: state.playlists.filter((p) => p.id !== action.payload),
@@ -135,6 +123,11 @@ const PlaylistsPage: React.FC = () => {
   }>({ key: "", direction: null });
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [columnWidths, setColumnWidths] = useState<{ song: number; artist: number; playlists: { [key: string]: number } }>({ song: 150, artist: 150, playlists: {} });
+
+  const songRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const playlistRefs = useRef<{ [key: string]: (HTMLDivElement | null)[] }>({});
 
   // Show error popup if the Spotify API is blocked
   useErrorHandling(setShowErrorPopup);
@@ -197,6 +190,11 @@ const PlaylistsPage: React.FC = () => {
     });
   }, [state.selectedPlaylists, token]);
 
+  useEffect(() => {
+    // Measure column widths after tracks are loaded
+    measureColumnWidths();
+  }, [state.playlistTracks, state.selectedPlaylists]);
+
   const handlePlayPreview = (track: Track) => {
     if (currentTrack && currentTrack.id === track.id) {
       setIsPlaying(!isPlaying);
@@ -212,12 +210,14 @@ const PlaylistsPage: React.FC = () => {
     ),
     (track: Track) => track.id
   );
+
   const handlePlaylistToggle = (playlist: Playlist): void => {
     dispatch({
       type: actionTypes.TOGGLE_PLAYLIST_SELECTION,
       payload: playlist,
     });
   };
+
   const sortTracks = (
     tracks: Track[],
     key: keyof Track | "artist" | "playlist" | string,
@@ -286,8 +286,6 @@ const PlaylistsPage: React.FC = () => {
     });
   };
 
-  
-
   const handleDeletePlaylist = async (playlistId: string) => {
     await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/followers`, {
       method: "DELETE",
@@ -298,15 +296,17 @@ const PlaylistsPage: React.FC = () => {
       payload: playlistId,
     });
   };
-  const sortedTracks = sortConfig.key
+
+  const filteredTracks = sortConfig.key
     ? sortTracks(
         [...allTracks],
         sortConfig.key as keyof Track | "artist" | "playlist",
-        sortConfig.direction as "ascending" | "descending", // Add type assertion here
+        sortConfig.direction as "ascending" | "descending",
         state.selectedPlaylists.find((p) => p.id === sortConfig.key)?.id
       )
     : allTracks;
-  const filteredTracks = sortedTracks.filter(
+
+  const filteredAndSearchedTracks = filteredTracks.filter(
     (track) =>
       track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       track.artists.some((artist) =>
@@ -328,11 +328,10 @@ const PlaylistsPage: React.FC = () => {
     );
     return response.json();
   };
+
   const moreThanXPlaylistsSelected = state.selectedPlaylists.length > 8;
-  const removeTrackFromPlaylist = async (
-    playlistId: string,
-    trackUri: string
-  ) => {
+
+  const removeTrackFromPlaylist = async (playlistId: string, trackUri: string) => {
     const response = await fetch(
       `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
       {
@@ -353,6 +352,20 @@ const PlaylistsPage: React.FC = () => {
       direction = "descending";
     }
     setSortConfig({ key, direction });
+  };
+
+  const measureColumnWidths = () => {
+    const songWidths = songRefs.current.map(ref => ref?.offsetWidth || 0);
+    const artistWidths = artistRefs.current.map(ref => ref?.offsetWidth || 0);
+
+    setColumnWidths({
+      song: 400,
+      artist:150,
+      playlists: state.selectedPlaylists.reduce((acc, playlist) => {
+        acc[playlist.id] = playlist.name.length * 8 + 20; // Approximate width based on character length + padding
+        return acc;
+      }, {} as { [key: string]: number }),
+    });
   };
 
   return (
@@ -377,12 +390,12 @@ const PlaylistsPage: React.FC = () => {
         <TopNav />
       </div>
       <div className="w-full h-full row-span-11 grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
-      <SideNav
+        <SideNav
           playlists={state.playlists}
           selectedPlaylists={state.selectedPlaylists}
           onPlaylistToggle={handlePlaylistToggle}
           onDeletePlaylist={handleDeletePlaylist}
-  onRenamePlaylist={handleRenamePlaylist} 
+          onRenamePlaylist={handleRenamePlaylist}
         />
 
         <Card className="flex flex-col w-full h-full overflow-hidden">
@@ -398,140 +411,165 @@ const PlaylistsPage: React.FC = () => {
               />
             </div>
           </CardHeader>
-          <ScrollArea className="w-full h-full flex flex-col overflow-auto">
-            <CardContent className="w-full h-full flex overflow-auto p-3">
-              {/* Songs Column */}
-              <div className="flex flex-col ">
-                <h2
-                  className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
-                  onClick={() => handleSort("name")}
-                >
-                  Song{" "}
-                  {sortConfig.key === "name" ? (
-                    sortConfig.direction === "ascending" ? (
-                      <AArrowUp className="ml-1 w-4 h-4" />
-                    ) : (
-                      <AArrowDown className="ml-1 w-4 h-4" />
-                    )
-                  ) : (
-                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
-                  )}
-                </h2>
-                <div className="flex flex-col gap-6">
-                  {filteredTracks.map((track: Track) => (
-                    <TrackComponent
-                      key={track.id}
-                      track={track}
-                      moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
-                      isPlaying={currentTrack?.id === track.id && isPlaying} // Pass isPlaying prop
-                      onPlayPreview={handlePlayPreview}
-                    />
-                  ))}
-                </div>
-              </div>
-              {/* Artists Column */}
-              <div className="flex flex-col ">
-                <h2
-                  className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
-                  onClick={() => handleSort("artist")}
-                >
-                  Artist{" "}
-                  {sortConfig.key === "artist" ? (
-                    sortConfig.direction === "ascending" ? (
-                      <AArrowUp className="ml-1 w-4 h-4" />
-                    ) : (
-                      <AArrowDown className="ml-1 w-4 h-4" />
-                    )
-                  ) : (
-                    <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
-                  )}
-                </h2>
-                <div className="flex flex-col gap-6">
-                  {filteredTracks.map((track: Track) => (
-                    <ArtistComponent
-                      key={track.id}
-                      track={track}
-                      moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
-                    />
-                  ))}
-                </div>
-              </div>
-              {/* Playlists Columns */}
-              {state.selectedPlaylists.map((playlist: Playlist) => (
-                <div key={playlist.id} className="flex flex-col  w-42 ">
+          <div className="w-full h-full flex flex-col overflow-auto">
+            <div className="sticky top-0 z-10 bg-background">
+              <div className="w-full flex">
+                {/* Songs Column */}
+                <div className="flex flex-col" style={{ width: `${columnWidths.song}px` }}>
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
-                    onClick={() => handleSort(playlist.id)}
+                    onClick={() => handleSort("name")}
                   >
-                    <CustomTooltip
-                      children={truncateText(playlist.name, 20)}
-                      description={playlist.name}
-                      time={300}
-                    />{" "}
-                    {sortConfig.key === playlist.id ? (
+                    Song{" "}
+                    {sortConfig.key === "name" ? (
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
                       ) : (
-                        <ArrowUp className="ml-1 w-4 h-4" />
+                        <ArrowDownUp className="ml-1 w-4 h-4" />
                       )
                     ) : (
-                      <ArrowUp className="ml-1w-4 h-4 text-muted-foreground" />
+                      <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
                     )}
                   </h2>
+                </div>
+                {/* Artists Column */}
+                <div className="flex flex-col" style={{ width: `${columnWidths.artist}px` }}>
+                  <h2
+                    className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
+                    onClick={() => handleSort("artist")}
+                  >
+                    Artist{" "}
+                    {sortConfig.key === "artist" ? (
+                      sortConfig.direction === "ascending" ? (
+                        <ArrowUp className="ml-1 w-4 h-4" />
+                      ) : (
+                        <ArrowDownUp className="ml-1 w-4 h-4" />
+                      )
+                    ) : (
+                      <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
+                    )}
+                  </h2>
+                </div>
+                {/* Playlists Columns */}
+                {state.selectedPlaylists.map((playlist: Playlist) => (
+                  <div key={playlist.id} className="flex flex-col" style={{ width: `${columnWidths.playlists[playlist.id]}px` }}>
+                    <h2
+                      className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
+                      onClick={() => handleSort(playlist.id)}
+                    >
+                      <CustomTooltip
+                        children={truncateText(playlist.name, 20)}
+                        description={playlist.name}
+                        time={300}
+                      />{" "}
+                      {sortConfig.key === playlist.id ? (
+                        sortConfig.direction === "ascending" ? (
+                          <ArrowUp className="ml-1 w-4 h-4" />
+                        ) : (
+                          <ArrowUp className="ml-1 w-4 h-4" />
+                        )
+                      ) : (
+                        <ArrowUp className="ml-1 w-4 h-4 text-muted-foreground" />
+                      )}
+                    </h2>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <ScrollArea className="w-full h-full flex flex-col overflow-auto">
+              <CardContent className="w-full flex p-3">
+                {/* Songs Column */}
+                <div className="flex flex-col" style={{ width: `${columnWidths.song}px` }}>
                   <div className="flex flex-col gap-6">
-                    {filteredTracks.map((track: Track) => {
-                      const isInPlaylist = state.playlistTracks[
-                        playlist.id
-                      ]?.some((pTrack) => pTrack.id === track.id);
-                      const handleToggleTrack = () => {
-                        if (isInPlaylist) {
-                          removeTrackFromPlaylist(
-                            playlist.id,
-                            `spotify:track:${track.id}`
-                          ).then(() => {
-                            dispatch({
-                              type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
-                              payload: {
-                                playlistId: playlist.id,
-                                trackId: track.id,
-                              },
-                            });
-                          });
-                        } else {
-                          addTrackToPlaylist(
-                            playlist.id,
-                            `spotify:track:${track.id}`
-                          ).then(() => {
-                            dispatch({
-                              type: actionTypes.ADD_TRACK_TO_PLAYLIST,
-                              payload: {
-                                playlistId: playlist.id,
-                                track: track,
-                              },
-                            });
-                          });
-                        }
-                      };
-                      return (
-                        <div
-                          key={track.id}
-                          className="p-1 h-14 flex justify-center "
-                        >
-                          <button onClick={handleToggleTrack} className="">
-                            {isInPlaylist ? (
-                              <Check className="text-primary hover:text-primary/50" />
-                            ) : (
-                              <Plus className="text-accent hover:text-accent/50" />
-                            )}
-                          </button>
-                        </div>
-                      );
-                    })}
+                    {filteredAndSearchedTracks.map((track: Track, index: number) => (
+                      <div ref={el => {
+                        if (el) songRefs.current[index] = el;
+                      }} key={track.id}>
+                        <TrackComponent
+                          track={track}
+                          moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
+                          isPlaying={currentTrack?.id === track.id && isPlaying}
+                          onPlayPreview={handlePlayPreview}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </ScrollArea>
+                {/* Artists Column */}
+                <div className="flex flex-col" style={{ width: `${columnWidths.artist}px` }}>
+                  <div className="flex flex-col gap-6">
+                    {filteredAndSearchedTracks.map((track: Track, index: number) => (
+                      <div ref={el => {
+                        if (el) artistRefs.current[index] = el;
+                      }} key={track.id}>
+                        <ArtistComponent
+                          track={track}
+                          moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Playlists Columns */}
+                {state.selectedPlaylists.map((playlist: Playlist) => (
+                  <div key={playlist.id} className="flex flex-col" style={{ width: `${columnWidths.playlists[playlist.id]}px` }}>
+                    <div className="flex flex-col gap-6">
+                      {filteredAndSearchedTracks.map((track: Track, index: number) => {
+                        const isInPlaylist = state.playlistTracks[
+                          playlist.id
+                        ]?.some((pTrack) => pTrack.id === track.id);
+                        const handleToggleTrack = () => {
+                          if (isInPlaylist) {
+                            removeTrackFromPlaylist(
+                              playlist.id,
+                              `spotify:track:${track.id}`
+                            ).then(() => {
+                              dispatch({
+                                type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
+                                payload: {
+                                  playlistId: playlist.id,
+                                  trackId: track.id,
+                                },
+                              });
+                            });
+                          } else {
+                            addTrackToPlaylist(
+                              playlist.id,
+                              `spotify:track:${track.id}`
+                            ).then(() => {
+                              dispatch({
+                                type: actionTypes.ADD_TRACK_TO_PLAYLIST,
+                                payload: {
+                                  playlistId: playlist.id,
+                                  track: track,
+                                },
+                              });
+                            });
+                          }
+                        };
+                        return (
+                          <div ref={el => {
+                            if (el) {
+                              if (!playlistRefs.current[playlist.id]) playlistRefs.current[playlist.id] = [];
+                              playlistRefs.current[playlist.id][index] = el;
+                            }
+                          }} key={track.id} className="p-1 h-14 flex justify-center">
+                            <button onClick={handleToggleTrack} className="">
+                              {isInPlaylist ? (
+                                <Check className="text-primary hover:text-primary/50" />
+                              ) : (
+                                <Plus className="text-accent hover:text-accent/50" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </ScrollArea>
+          </div>
         </Card>
       </div>
       {/* Render the SpotifyPreviewPlayer if there is a currentTrack */}
