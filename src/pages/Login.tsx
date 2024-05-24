@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 export default function Login() {
   const stateKey = "spotify_auth_state";
+<<<<<<< Updated upstream
   const [clientId, setClientId] = useState("");
   const [redirectUri, setRedirectUri] = useState("");
   useEffect(() => {
@@ -14,18 +15,36 @@ export default function Login() {
       const config = await getConfig();
       setClientId(config.clientId);
       setRedirectUri(config.redirectUri);
+=======
+  const [config, setConfig] = useState({ clientId: "", redirectUri: "" });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const configData = await getConfig();
+        setConfig({
+          clientId: configData.clientId,
+          redirectUri: configData.redirectUri,
+        });
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to fetch configuration:", error);
+        setLoading(false);
+      }
+>>>>>>> Stashed changes
     };
     fetchConfig();
   }, []);
   const scope =
     "user-read-private playlist-read-collaborative playlist-read-private playlist-modify-private playlist-modify-public";
 
-  const generateRandomString = (length: number) => {
-    var text = "";
-    var possible =
+  const generateRandomString = (length) => {
+    let text = "";
+    const possible =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-    for (var i = 0; i < length; i++) {
+    for (let i = 0; i < length; i++) {
       text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
@@ -35,7 +54,7 @@ export default function Login() {
     const state = generateRandomString(16);
     localStorage.setItem(stateKey, state);
 
-    var url = "https://accounts.spotify.com/authorize";
+    let url = "https://accounts.spotify.com/authorize";
     url += "?response_type=token";
     url += "&client_id=" + encodeURIComponent(clientId);
     url += "&scope=" + encodeURIComponent(scope);
@@ -61,6 +80,7 @@ export default function Login() {
         <Button
           onClick={handleLoginClick}
           className="h-10 lg:h-16 w-42 lg:w-72 rounded-full bg-primary/10 shadow-md hover:bg-primary/30 text-foreground text-sm lg:text-xl"
+          disabled={loading}
         >
           <SpotifyLogo className="mr-3 w-5 lg:w-8" />
           <div>
