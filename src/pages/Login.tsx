@@ -7,15 +7,6 @@ import { useEffect, useState } from "react";
 
 export default function Login() {
   const stateKey = "spotify_auth_state";
-<<<<<<< Updated upstream
-  const [clientId, setClientId] = useState("");
-  const [redirectUri, setRedirectUri] = useState("");
-  useEffect(() => {
-    const fetchConfig = async () => {
-      const config = await getConfig();
-      setClientId(config.clientId);
-      setRedirectUri(config.redirectUri);
-=======
   const [config, setConfig] = useState({ clientId: "", redirectUri: "" });
   const [loading, setLoading] = useState(true);
 
@@ -32,14 +23,14 @@ export default function Login() {
         console.error("Failed to fetch configuration:", error);
         setLoading(false);
       }
->>>>>>> Stashed changes
     };
     fetchConfig();
   }, []);
+
   const scope =
     "user-read-private playlist-read-collaborative playlist-read-private playlist-modify-private playlist-modify-public";
 
-  const generateRandomString = (length) => {
+  const generateRandomString = (length: number) => {
     let text = "";
     const possible =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -56,17 +47,21 @@ export default function Login() {
 
     let url = "https://accounts.spotify.com/authorize";
     url += "?response_type=token";
-    url += "&client_id=" + encodeURIComponent(clientId);
+    url += "&client_id=" + encodeURIComponent(config.clientId);
     url += "&scope=" + encodeURIComponent(scope);
-    url += "&redirect_uri=" + encodeURIComponent(redirectUri);
+    url += "&redirect_uri=" + encodeURIComponent(config.redirectUri);
     url += "&state=" + encodeURIComponent(state);
 
     return url;
   };
 
   const handleLoginClick = () => {
-    const spotifyAuthUrl = generateAuthUrl();
-    window.location.href = spotifyAuthUrl;
+    if (config.clientId && config.redirectUri) {
+      const spotifyAuthUrl = generateAuthUrl();
+      window.location.href = spotifyAuthUrl;
+    } else {
+      console.error("Missing required configuration parameters.");
+    }
   };
 
   return (
