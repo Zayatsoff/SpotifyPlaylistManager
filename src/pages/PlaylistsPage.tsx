@@ -1,4 +1,11 @@
-import React, { useEffect, useReducer, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useReducer,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
 import ArtistComponent from "@/components/playlists/ArtistComponent";
@@ -22,7 +29,6 @@ import {
 } from "@/components/ui/dialog";
 import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
 
-// Define action types
 const actionTypes = {
   SET_PLAYLISTS: "SET_PLAYLISTS",
   TOGGLE_PLAYLIST_SELECTION: "TOGGLE_PLAYLIST_SELECTION",
@@ -32,7 +38,6 @@ const actionTypes = {
   DELETE_PLAYLIST: "DELETE_PLAYLIST",
 };
 
-// Define the initial state with the correct types
 const initialState = {
   playlists: [],
   selectedPlaylists: [],
@@ -50,7 +55,6 @@ interface Action {
   payload: any;
 }
 
-// Reducer function to manage state
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
     case actionTypes.SET_PLAYLISTS:
@@ -139,7 +143,6 @@ const PlaylistsPage: React.FC = () => {
   const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
   const playlistRefs = useRef<{ [key: string]: (HTMLDivElement | null)[] }>({});
 
-  // Show error popup if the Spotify API is blocked
   useErrorHandling(setShowErrorPopup);
 
   useEffect(() => {
@@ -157,7 +160,6 @@ const PlaylistsPage: React.FC = () => {
       );
       const data = await playlistsResponse.json();
 
-      // Filter to only include playlists where the current user is the owner
       const userOwnedPlaylists = data.items.filter(
         (playlist: { owner: { id: any } }) => playlist.owner.id === userData.id
       );
@@ -181,14 +183,13 @@ const PlaylistsPage: React.FC = () => {
           );
           const data = await response.json();
           const tracks = data.items.map((item: any) => ({
-            // Ensure type safety by replacing 'any' with a more specific type
             id: item.track.id,
             name: item.track.name,
             artists: item.track.artists.map((artist: any) => ({
               name: artist.name,
             })),
             albumImage: item.track.album.images[0]?.url || "",
-            previewUrl: item.track.preview_url || "", // Add previewUrl
+            previewUrl: item.track.preview_url || "",
           }));
           dispatch({
             type: actionTypes.SET_TRACKS,
@@ -200,79 +201,89 @@ const PlaylistsPage: React.FC = () => {
     });
   }, [state.selectedPlaylists, token]);
 
-  const handlePlayPreview = (track: Track) => {
-    if (currentTrack && currentTrack.id === track.id) {
-      setIsPlaying(!isPlaying);
-    } else {
-      setCurrentTrack(track);
-      setIsPlaying(true);
-    }
-  };
-
-  const allTracks = uniqBy(
-    state.selectedPlaylists.flatMap(
-      (playlist) => state.playlistTracks[playlist.id] || []
-    ),
-    (track: Track) => track.id
+  const handlePlayPreview = useCallback(
+    (track: Track) => {
+      if (currentTrack && currentTrack.id === track.id) {
+        setIsPlaying(!isPlaying);
+      } else {
+        setCurrentTrack(track);
+        setIsPlaying(true);
+      }
+    },
+    [currentTrack, isPlaying]
   );
 
-  const handlePlaylistToggle = (playlist: Playlist): void => {
+  const allTracks = useMemo(
+    () =>
+      uniqBy(
+        state.selectedPlaylists.flatMap(
+          (playlist) => state.playlistTracks[playlist.id] || []
+        ),
+        (track: Track) => track.id
+      ),
+    [state.selectedPlaylists, state.playlistTracks]
+  );
+
+  const handlePlaylistToggle = useCallback((playlist: Playlist): void => {
     dispatch({
       type: actionTypes.TOGGLE_PLAYLIST_SELECTION,
       payload: playlist,
     });
-  };
+  }, []);
 
-  const sortTracks = (
-    tracks: Track[],
-    key: keyof Track | "artist" | "playlist" | string,
-    direction: "ascending" | "descending",
-    playlistId?: string
-  ) => {
-    return tracks.sort((a, b) => {
-      let aValue: string, bValue: string;
+  const sortTracks = useCallback(
+    (
+      tracks: Track[],
+      key: keyof Track | "artist" | "playlist" | string,
+      direction: "ascending" | "descending",
+      playlistId?: string
+    ) => {
+      return tracks.sort((a, b) => {
+        let aValue: string, bValue: string;
 
-      if (playlistId) {
-        const aInPlaylist = state.playlistTracks[playlistId]?.some(
-          (t) => t.id === a.id
-        );
-        const bInPlaylist = state.playlistTracks[playlistId]?.some(
-          (t) => t.id === b.id
-        );
+        if (playlistId) {
+          const aInPlaylist = state.playlistTracks[playlistId]?.some(
+            (t) => t.id === a.id
+          );
+          const bInPlaylist = state.playlistTracks[playlistId]?.some(
+            (t) => t.id === b.id
+          );
 
-        if (aInPlaylist && !bInPlaylist) return -1;
-        if (!aInPlaylist && bInPlaylist) return 1;
-      }
+          if (aInPlaylist && !bInPlaylist) return -1;
+          if (!aInPlaylist && bInPlaylist) return 1;
+        }
 
-      if (key === "artist") {
-        aValue = a.artists[0]?.name.toLowerCase();
-        bValue = b.artists[0]?.name.toLowerCase();
-      } else if (key === "playlist") {
-        const aPlaylist = state.selectedPlaylists.find((playlist) =>
-          state.playlistTracks[playlist.id]?.some((t) => t.id === a.id)
-        );
-        const bPlaylist = state.selectedPlaylists.find((playlist) =>
-          state.playlistTracks[playlist.id]?.some((t) => t.id === b.id)
-        );
-        aValue = aPlaylist?.name.toLowerCase() || "";
-        bValue = bPlaylist?.name.toLowerCase() || "";
-      } else if (key === "name") {
-        aValue = a.name.toLowerCase();
-        bValue = b.name.toLowerCase();
-      } else {
-        aValue = (a as any)[key]?.toString().toLowerCase();
-        bValue = (b as any)[key]?.toString().toLowerCase();
-      }
+        if (key === "artist") {
+          aValue = a.artists[0]?.name.toLowerCase();
+          bValue = b.artists[0]?.name.toLowerCase();
+        } else if (key === "playlist") {
+          const aPlaylist = state.selectedPlaylists.find((playlist) =>
+            state.playlistTracks[playlist.id]?.some((t) => t.id === a.id)
+          );
+          const bPlaylist = state.selectedPlaylists.find((playlist) =>
+            state.playlistTracks[playlist.id]?.some((t) => t.id === b.id)
+          );
+          aValue = aPlaylist?.name.toLowerCase() || "";
+          bValue = bPlaylist?.name.toLowerCase() || "";
+        } else if (key === "name") {
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+        } else {
+          aValue = (a as any)[key]?.toString().toLowerCase();
+          bValue = (b as any)[key]?.toString().toLowerCase();
+        }
 
-      if (aValue < bValue) {
-        return direction === "ascending" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return direction === "ascending" ? 1 : -1;
-      }
-      return 0;
-    });
-  };
+        if (aValue < bValue) {
+          return direction === "ascending" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    },
+    [state.playlistTracks, state.selectedPlaylists]
+  );
 
   const handleRenamePlaylist = async (playlistId: string, newName: string) => {
     await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
@@ -305,21 +316,29 @@ const PlaylistsPage: React.FC = () => {
     });
   };
 
-  const filteredTracks = sortConfig.key
-    ? sortTracks(
-        [...allTracks],
-        sortConfig.key as keyof Track | "artist" | "playlist",
-        sortConfig.direction as "ascending" | "descending",
-        state.selectedPlaylists.find((p) => p.id === sortConfig.key)?.id
-      )
-    : allTracks;
+  const filteredTracks = useMemo(
+    () =>
+      sortConfig.key
+        ? sortTracks(
+            [...allTracks],
+            sortConfig.key as keyof Track | "artist" | "playlist",
+            sortConfig.direction as "ascending" | "descending",
+            state.selectedPlaylists.find((p) => p.id === sortConfig.key)?.id
+          )
+        : allTracks,
+    [allTracks, sortConfig, sortTracks, state.selectedPlaylists]
+  );
 
-  const filteredAndSearchedTracks = filteredTracks.filter(
-    (track) =>
-      track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      track.artists.some((artist) =>
-        artist.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+  const filteredAndSearchedTracks = useMemo(
+    () =>
+      filteredTracks.filter(
+        (track) =>
+          track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          track.artists.some((artist) =>
+            artist.name.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+      ),
+    [filteredTracks, searchQuery]
   );
 
   const addTrackToPlaylist = async (playlistId: string, trackUri: string) => {
@@ -356,10 +375,12 @@ const PlaylistsPage: React.FC = () => {
     );
     return response.json();
   };
+
   useEffect(() => {
     songRefs.current = [];
     artistRefs.current = [];
   }, [state.selectedPlaylists, filteredAndSearchedTracks]);
+
   const handleSort = (key: keyof Track | "artist" | "playlist" | string) => {
     let direction: "ascending" | "descending" = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -378,7 +399,6 @@ const PlaylistsPage: React.FC = () => {
       context.font = font;
       return context.measureText(text).width;
     }
-    // If the context is null, return a default width
     return 0;
   };
 
@@ -396,12 +416,12 @@ const PlaylistsPage: React.FC = () => {
         )
       );
 
-      const maxSongWidth = Math.max(...songWidths, 150); // Default to 150 if no widths
-      const maxArtistWidth = Math.max(...artistWidths, 150); // Default to 150 if no widths
+      const maxSongWidth = Math.max(...songWidths, 150);
+      const maxArtistWidth = Math.max(...artistWidths, 150);
       setColumnWidths((prevColumnWidths) => ({
         ...prevColumnWidths,
-        song: maxSongWidth + 50, // Add some padding
-        artist: maxArtistWidth + 5, // Add some padding
+        song: maxSongWidth + 50,
+        artist: maxArtistWidth + 5,
       }));
     };
 
@@ -410,7 +430,6 @@ const PlaylistsPage: React.FC = () => {
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
-      {/* Error Popup Dialog */}
       {showErrorPopup && (
         <Dialog open={showErrorPopup} onOpenChange={setShowErrorPopup}>
           <DialogContent>
@@ -437,7 +456,6 @@ const PlaylistsPage: React.FC = () => {
           onDeletePlaylist={handleDeletePlaylist}
           onRenamePlaylist={handleRenamePlaylist}
         />
-
         <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
@@ -454,7 +472,6 @@ const PlaylistsPage: React.FC = () => {
           <div className="w-full h-full flex flex-col overflow-auto">
             <div className="sticky top-0 z-10 bg-background">
               <div className="w-full flex">
-                {/* Songs Column */}
                 <div
                   className="flex flex-col"
                   style={{ width: `${columnWidths.song}px` }}
@@ -475,7 +492,6 @@ const PlaylistsPage: React.FC = () => {
                     )}
                   </h2>
                 </div>
-                {/* Artists Column */}
                 <div
                   className="flex flex-col"
                   style={{ width: `${columnWidths.artist}px` }}
@@ -496,7 +512,6 @@ const PlaylistsPage: React.FC = () => {
                     )}
                   </h2>
                 </div>
-                {/* Playlists Columns */}
                 {state.selectedPlaylists.map((playlist: Playlist) => (
                   <div
                     key={playlist.id}
@@ -512,9 +527,12 @@ const PlaylistsPage: React.FC = () => {
                       <CustomTooltip
                         children={
                           <img
-                            src={playlist.images[0]?.url}
-                            alt={`${playlist.name} cover`}
-                            className="w-10 h-10 rounded-md "
+                            src={
+                              playlist?.images?.[0]?.url ||
+                              "/src/assets/emptyPlaylist.png"
+                            }
+                            alt={`${playlist?.name || "Playlist"} cover`}
+                            className="w-10 h-10 rounded-md"
                           />
                         }
                         description={playlist.name}
@@ -536,7 +554,6 @@ const PlaylistsPage: React.FC = () => {
             </div>
             <ScrollArea className="w-full h-full flex flex-col overflow-auto">
               <CardContent className="w-full flex p-3">
-                {/* Songs Column */}
                 <div
                   className="flex flex-col"
                   style={{ width: `${columnWidths.song}px` }}
@@ -565,7 +582,6 @@ const PlaylistsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                {/* Artists Column */}
                 <div
                   className="flex flex-col"
                   style={{ width: `${columnWidths.artist}px` }}
@@ -590,7 +606,6 @@ const PlaylistsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                {/* Playlists Columns */}
                 {state.selectedPlaylists.map((playlist: Playlist) => (
                   <div
                     key={playlist.id}
@@ -665,7 +680,6 @@ const PlaylistsPage: React.FC = () => {
           </div>
         </Card>
       </div>
-      {/* Render the SpotifyPreviewPlayer if there is a currentTrack */}
       {currentTrack && (
         <SpotifyPreviewPlayer
           track={currentTrack}
