@@ -16,13 +16,9 @@ const ArtistComponent: React.FC<ArtistComponentProps> = ({
     .map((artist: Artist) => artist.name)
     .join(", ");
   return (
-    <div key={track.id} className="p-1 h-14 flex items-center">
+    <div key={track.id} className="text-base p-1 h-14 flex items-center">
       <CustomTooltip
-        children={
-          <div>
-            {truncateText(artistNames, moreThanXPlaylistsSelected ? 5 : 10)}
-          </div>
-        }
+        children={<div>{truncateText(artistNames, 20)}</div>}
         description={artistNames}
         time={300}
       />

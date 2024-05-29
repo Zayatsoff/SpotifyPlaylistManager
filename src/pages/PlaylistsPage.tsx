@@ -13,7 +13,13 @@ import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
 import useErrorHandling from "@/hooks/useErrorHandling";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
 
 // Define action types
@@ -123,7 +129,11 @@ const PlaylistsPage: React.FC = () => {
   }>({ key: "", direction: null });
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [columnWidths, setColumnWidths] = useState<{ song: number; artist: number; playlists: { [key: string]: number } }>({ song: 150, artist: 150, playlists: {} });
+  const [columnWidths, setColumnWidths] = useState<{
+    song: number;
+    artist: number;
+    playlists: { [key: string]: number };
+  }>({ song: 150, artist: 150, playlists: {} });
 
   const songRefs = useRef<(HTMLDivElement | null)[]>([]);
   const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -189,11 +199,6 @@ const PlaylistsPage: React.FC = () => {
       }
     });
   }, [state.selectedPlaylists, token]);
-
-  useEffect(() => {
-    // Measure column widths after tracks are loaded
-    measureColumnWidths();
-  }, [state.playlistTracks, state.selectedPlaylists]);
 
   const handlePlayPreview = (track: Track) => {
     if (currentTrack && currentTrack.id === track.id) {
@@ -287,10 +292,13 @@ const PlaylistsPage: React.FC = () => {
   };
 
   const handleDeletePlaylist = async (playlistId: string) => {
-    await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/followers`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await fetch(
+      `https://api.spotify.com/v1/playlists/${playlistId}/followers`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
     dispatch({
       type: actionTypes.DELETE_PLAYLIST,
       payload: playlistId,
@@ -331,7 +339,10 @@ const PlaylistsPage: React.FC = () => {
 
   const moreThanXPlaylistsSelected = state.selectedPlaylists.length > 8;
 
-  const removeTrackFromPlaylist = async (playlistId: string, trackUri: string) => {
+  const removeTrackFromPlaylist = async (
+    playlistId: string,
+    trackUri: string
+  ) => {
     const response = await fetch(
       `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
       {
@@ -345,7 +356,10 @@ const PlaylistsPage: React.FC = () => {
     );
     return response.json();
   };
-
+  useEffect(() => {
+    songRefs.current = [];
+    artistRefs.current = [];
+  }, [state.selectedPlaylists, filteredAndSearchedTracks]);
   const handleSort = (key: keyof Track | "artist" | "playlist" | string) => {
     let direction: "ascending" | "descending" = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -354,19 +368,45 @@ const PlaylistsPage: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  const measureColumnWidths = () => {
-    const songWidths = songRefs.current.map(ref => ref?.offsetWidth || 0);
-    const artistWidths = artistRefs.current.map(ref => ref?.offsetWidth || 0);
-
-    setColumnWidths({
-      song: 400,
-      artist:150,
-      playlists: state.selectedPlaylists.reduce((acc, playlist) => {
-        acc[playlist.id] = playlist.name.length * 8 + 20; // Approximate width based on character length + padding
-        return acc;
-      }, {} as { [key: string]: number }),
-    });
+  const measureTextWidth = (
+    text: string,
+    font: string = "20px Arial"
+  ): number => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.font = font;
+      return context.measureText(text).width;
+    }
+    // If the context is null, return a default width
+    return 0;
   };
+
+  useEffect(() => {
+    const measureColumnWidths = () => {
+      const songWidths = filteredAndSearchedTracks.map((track) =>
+        measureTextWidth(truncateText(track.name, 23))
+      );
+      const artistWidths = filteredAndSearchedTracks.map((track) =>
+        measureTextWidth(
+          truncateText(
+            track.artists.map((artist) => artist.name).join(", "),
+            23
+          )
+        )
+      );
+
+      const maxSongWidth = Math.max(...songWidths, 150); // Default to 150 if no widths
+      const maxArtistWidth = Math.max(...artistWidths, 150); // Default to 150 if no widths
+      setColumnWidths((prevColumnWidths) => ({
+        ...prevColumnWidths,
+        song: maxSongWidth + 50, // Add some padding
+        artist: maxArtistWidth + 5, // Add some padding
+      }));
+    };
+
+    measureColumnWidths();
+  }, [state.selectedPlaylists, filteredAndSearchedTracks]);
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
@@ -415,12 +455,15 @@ const PlaylistsPage: React.FC = () => {
             <div className="sticky top-0 z-10 bg-background">
               <div className="w-full flex">
                 {/* Songs Column */}
-                <div className="flex flex-col" style={{ width: `${columnWidths.song}px` }}>
+                <div
+                  className="flex flex-col"
+                  style={{ width: `${columnWidths.song}px` }}
+                >
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                     onClick={() => handleSort("name")}
                   >
-                    Song{" "}
+                    Song
                     {sortConfig.key === "name" ? (
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
@@ -433,12 +476,15 @@ const PlaylistsPage: React.FC = () => {
                   </h2>
                 </div>
                 {/* Artists Column */}
-                <div className="flex flex-col" style={{ width: `${columnWidths.artist}px` }}>
+                <div
+                  className="flex flex-col"
+                  style={{ width: `${columnWidths.artist}px` }}
+                >
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
                     onClick={() => handleSort("artist")}
                   >
-                    Artist{" "}
+                    Artist
                     {sortConfig.key === "artist" ? (
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
@@ -452,16 +498,28 @@ const PlaylistsPage: React.FC = () => {
                 </div>
                 {/* Playlists Columns */}
                 {state.selectedPlaylists.map((playlist: Playlist) => (
-                  <div key={playlist.id} className="flex flex-col" style={{ width: `${columnWidths.playlists[playlist.id]}px` }}>
-                    <h2
-                      className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
+                  <div
+                    key={playlist.id}
+                    className="flex flex-col"
+                    style={{
+                      width: `${columnWidths.playlists[playlist.id]}px`,
+                    }}
+                  >
+                    <div
+                      className="h-14 w-20 cursor-pointer flex flex-row items-center justify-center"
                       onClick={() => handleSort(playlist.id)}
                     >
                       <CustomTooltip
-                        children={truncateText(playlist.name, 20)}
+                        children={
+                          <img
+                            src={playlist.images[0]?.url}
+                            alt={`${playlist.name} cover`}
+                            className="w-10 h-10 rounded-md "
+                          />
+                        }
                         description={playlist.name}
-                        time={300}
-                      />{" "}
+                        time={200}
+                      />
                       {sortConfig.key === playlist.id ? (
                         sortConfig.direction === "ascending" ? (
                           <ArrowUp className="ml-1 w-4 h-4" />
@@ -471,7 +529,7 @@ const PlaylistsPage: React.FC = () => {
                       ) : (
                         <ArrowUp className="ml-1 w-4 h-4 text-muted-foreground" />
                       )}
-                    </h2>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -479,91 +537,126 @@ const PlaylistsPage: React.FC = () => {
             <ScrollArea className="w-full h-full flex flex-col overflow-auto">
               <CardContent className="w-full flex p-3">
                 {/* Songs Column */}
-                <div className="flex flex-col" style={{ width: `${columnWidths.song}px` }}>
+                <div
+                  className="flex flex-col"
+                  style={{ width: `${columnWidths.song}px` }}
+                >
                   <div className="flex flex-col gap-6">
-                    {filteredAndSearchedTracks.map((track: Track, index: number) => (
-                      <div ref={el => {
-                        if (el) songRefs.current[index] = el;
-                      }} key={track.id}>
-                        <TrackComponent
-                          track={track}
-                          moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
-                          isPlaying={currentTrack?.id === track.id && isPlaying}
-                          onPlayPreview={handlePlayPreview}
-                        />
-                      </div>
-                    ))}
+                    {filteredAndSearchedTracks.map(
+                      (track: Track, index: number) => (
+                        <div
+                          ref={(el) => {
+                            if (el) songRefs.current[index] = el;
+                          }}
+                          key={track.id}
+                        >
+                          <TrackComponent
+                            track={track}
+                            moreThanXPlaylistsSelected={
+                              moreThanXPlaylistsSelected
+                            }
+                            isPlaying={
+                              currentTrack?.id === track.id && isPlaying
+                            }
+                            onPlayPreview={handlePlayPreview}
+                          />
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
                 {/* Artists Column */}
-                <div className="flex flex-col" style={{ width: `${columnWidths.artist}px` }}>
+                <div
+                  className="flex flex-col"
+                  style={{ width: `${columnWidths.artist}px` }}
+                >
                   <div className="flex flex-col gap-6">
-                    {filteredAndSearchedTracks.map((track: Track, index: number) => (
-                      <div ref={el => {
-                        if (el) artistRefs.current[index] = el;
-                      }} key={track.id}>
-                        <ArtistComponent
-                          track={track}
-                          moreThanXPlaylistsSelected={moreThanXPlaylistsSelected}
-                        />
-                      </div>
-                    ))}
+                    {filteredAndSearchedTracks.map(
+                      (track: Track, index: number) => (
+                        <div
+                          ref={(el) => {
+                            if (el) artistRefs.current[index] = el;
+                          }}
+                          key={track.id}
+                        >
+                          <ArtistComponent
+                            track={track}
+                            moreThanXPlaylistsSelected={
+                              moreThanXPlaylistsSelected
+                            }
+                          />
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
                 {/* Playlists Columns */}
                 {state.selectedPlaylists.map((playlist: Playlist) => (
-                  <div key={playlist.id} className="flex flex-col" style={{ width: `${columnWidths.playlists[playlist.id]}px` }}>
+                  <div
+                    key={playlist.id}
+                    className="flex flex-col "
+                    style={{
+                      width: `${columnWidths.playlists[playlist.id]}px`,
+                    }}
+                  >
                     <div className="flex flex-col gap-6">
-                      {filteredAndSearchedTracks.map((track: Track, index: number) => {
-                        const isInPlaylist = state.playlistTracks[
-                          playlist.id
-                        ]?.some((pTrack) => pTrack.id === track.id);
-                        const handleToggleTrack = () => {
-                          if (isInPlaylist) {
-                            removeTrackFromPlaylist(
-                              playlist.id,
-                              `spotify:track:${track.id}`
-                            ).then(() => {
-                              dispatch({
-                                type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
-                                payload: {
-                                  playlistId: playlist.id,
-                                  trackId: track.id,
-                                },
+                      {filteredAndSearchedTracks.map(
+                        (track: Track, index: number) => {
+                          const isInPlaylist = state.playlistTracks[
+                            playlist.id
+                          ]?.some((pTrack) => pTrack.id === track.id);
+                          const handleToggleTrack = () => {
+                            if (isInPlaylist) {
+                              removeTrackFromPlaylist(
+                                playlist.id,
+                                `spotify:track:${track.id}`
+                              ).then(() => {
+                                dispatch({
+                                  type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
+                                  payload: {
+                                    playlistId: playlist.id,
+                                    trackId: track.id,
+                                  },
+                                });
                               });
-                            });
-                          } else {
-                            addTrackToPlaylist(
-                              playlist.id,
-                              `spotify:track:${track.id}`
-                            ).then(() => {
-                              dispatch({
-                                type: actionTypes.ADD_TRACK_TO_PLAYLIST,
-                                payload: {
-                                  playlistId: playlist.id,
-                                  track: track,
-                                },
+                            } else {
+                              addTrackToPlaylist(
+                                playlist.id,
+                                `spotify:track:${track.id}`
+                              ).then(() => {
+                                dispatch({
+                                  type: actionTypes.ADD_TRACK_TO_PLAYLIST,
+                                  payload: {
+                                    playlistId: playlist.id,
+                                    track: track,
+                                  },
+                                });
                               });
-                            });
-                          }
-                        };
-                        return (
-                          <div ref={el => {
-                            if (el) {
-                              if (!playlistRefs.current[playlist.id]) playlistRefs.current[playlist.id] = [];
-                              playlistRefs.current[playlist.id][index] = el;
                             }
-                          }} key={track.id} className="p-1 h-14 flex justify-center">
-                            <button onClick={handleToggleTrack} className="">
-                              {isInPlaylist ? (
-                                <Check className="text-primary hover:text-primary/50" />
-                              ) : (
-                                <Plus className="text-accent hover:text-accent/50" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
+                          };
+                          return (
+                            <div
+                              ref={(el) => {
+                                if (el) {
+                                  if (!playlistRefs.current[playlist.id])
+                                    playlistRefs.current[playlist.id] = [];
+                                  playlistRefs.current[playlist.id][index] = el;
+                                }
+                              }}
+                              key={track.id}
+                              className=" ml-[0.72rem] h-14 w-[4.2rem] flex justify-start items-center"
+                            >
+                              <button onClick={handleToggleTrack} className="">
+                                {isInPlaylist ? (
+                                  <Check className="text-primary hover:text-primary/50" />
+                                ) : (
+                                  <Plus className="text-accent hover:text-accent/50" />
+                                )}
+                              </button>
+                            </div>
+                          );
+                        }
+                      )}
                     </div>
                   </div>
                 ))}

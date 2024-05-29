@@ -38,8 +38,8 @@ const TrackComponent: React.FC<TrackComponentProps> = ({
 
       <CustomTooltip
         children={
-          <div>
-            {truncateText(track.name, moreThanXPlaylistsSelected ? 10 : 30)}
+          <div className="text-md text-left ml-3">
+            {truncateText(track.name, 20)}
           </div>
         }
         description={track.name}
