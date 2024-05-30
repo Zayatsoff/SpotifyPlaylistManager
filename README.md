@@ -28,6 +28,8 @@
 - [x] Add feature: Song preview
 - [x] Add feature: Option to rename and delete playlists
 - [ ] Add feature: Replace album cover
+- [ ] Bug: PlaylistPage no longer fetches from spotify, uses cached data instead
+- [ ] Add feature: History
 - [ ] Add feature: Combine playlists
 - [ ] Add feature: Optional pagination
 - [ ] Add feature: Add new songs to list
