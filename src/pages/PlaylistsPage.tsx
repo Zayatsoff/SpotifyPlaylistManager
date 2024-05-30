@@ -146,13 +146,17 @@ const PlaylistsPage: React.FC = () => {
   useErrorHandling(setShowErrorPopup);
 
   useEffect(() => {
-    // Clear cached data
-    dispatch({ type: actionTypes.SET_PLAYLISTS, payload: [] });
-    dispatch({ type: actionTypes.SET_TRACKS, payload: {} });
-
     const fetchPlaylists = async () => {
       if (!token) {
         return;
+      }
+
+      const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
+      if (cachedPlaylists) {
+        dispatch({
+          type: actionTypes.SET_PLAYLISTS,
+          payload: JSON.parse(cachedPlaylists),
+        });
       }
 
       const userResponse = await fetch("https://api.spotify.com/v1/me", {
@@ -169,6 +173,10 @@ const PlaylistsPage: React.FC = () => {
         (playlist: { owner: { id: any } }) => playlist.owner.id === userData.id
       );
 
+      sessionStorage.setItem(
+        "cachedPlaylists",
+        JSON.stringify(userOwnedPlaylists)
+      );
       dispatch({
         type: actionTypes.SET_PLAYLISTS,
         payload: userOwnedPlaylists,
@@ -208,19 +216,32 @@ const PlaylistsPage: React.FC = () => {
 
     return allTracks;
   };
-
   useEffect(() => {
+    const fetchTracks = async (playlistId: string) => {
+      const cachedTracks = sessionStorage.getItem(`cachedTracks_${playlistId}`);
+      if (cachedTracks) {
+        dispatch({
+          type: actionTypes.SET_TRACKS,
+          payload: { id: playlistId, tracks: JSON.parse(cachedTracks) },
+        });
+      }
+
+      const tracks = await fetchAllTracks(playlistId);
+      sessionStorage.setItem(
+        `cachedTracks_${playlistId}`,
+        JSON.stringify(tracks)
+      );
+      dispatch({
+        type: actionTypes.SET_TRACKS,
+        payload: { id: playlistId, tracks },
+      });
+    };
+
     state.selectedPlaylists.forEach((playlist) => {
       if (!state.playlistTracks[playlist.id]) {
-        const fetchTracks = async () => {
-          const tracks = await fetchAllTracks(playlist.id);
-
-          dispatch({
-            type: actionTypes.SET_TRACKS,
-            payload: { id: playlist.id, tracks },
-          });
-        };
-        fetchTracks();
+        fetchTracks(playlist.id);
+      } else {
+        fetchTracks(playlist.id); // Ensure tracks are always updated
       }
     });
   }, [state.selectedPlaylists, token]);

@@ -50,6 +50,7 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   const setToken = (token: string | null) => {
     if (token === null) {
       localStorage.removeItem("spotifyToken"); // Clear token from storage on logout or invalidation
+      sessionStorage.clear(); // Clear session storage on logout
     } else {
       localStorage.setItem("spotifyToken", token); // Save token to storage
     }
