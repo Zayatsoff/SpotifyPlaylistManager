@@ -27,8 +27,7 @@
 - [x] Add feature: Sort by
 - [x] Add feature: Song preview
 - [x] Add feature: Option to rename and delete playlists
-- [ ] Add feature: Replace album cover
-- [ ] Bug: PlaylistPage no longer fetches from spotify, uses cached data instead
+- [x] Bug: `PlaylistPage` ~~no longer fetches from spotify, uses cached data instead~~ The playlist page was only displayuing 100 tracks.
 - [ ] Add feature: History
 - [ ] Add feature: Combine playlists
 - [ ] Add feature: Optional pagination
@@ -37,3 +36,4 @@
 - [ ] Add feature: Statistics page
 - [ ] Add feature: Settings
 - [ ] Add feature: Responsiveness
+- [ ] ~~Add feature: Replace album cover~~ (Need proper backend to store album cover; will come back to in the future)
