@@ -24,7 +24,19 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   const [token, setTokenState] = useState<string | null>(null);
 
   useEffect(() => {
-    // Attempt to retrieve the token from local storage
+    const hash = window.location.hash;
+    let token = window.localStorage.getItem("spotifyToken");
+
+    if (!token && hash) {
+      token = new URLSearchParams(hash.substring(1)).get("access_token");
+      window.location.hash = "";
+      if (token) {
+        window.localStorage.setItem("spotifyToken", token);
+      }
+    }
+
+    setTokenState(token);
+
     const storedToken = localStorage.getItem("spotifyToken");
     if (storedToken) {
       setTokenState(storedToken);

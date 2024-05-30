@@ -146,8 +146,14 @@ const PlaylistsPage: React.FC = () => {
   useErrorHandling(setShowErrorPopup);
 
   useEffect(() => {
+    // Clear cached data
+    dispatch({ type: actionTypes.SET_PLAYLISTS, payload: [] });
+    dispatch({ type: actionTypes.SET_TRACKS, payload: {} });
+
     const fetchPlaylists = async () => {
-      if (!token) return;
+      if (!token) {
+        return;
+      }
 
       const userResponse = await fetch("https://api.spotify.com/v1/me", {
         headers: { Authorization: `Bearer ${token}` },
@@ -159,7 +165,6 @@ const PlaylistsPage: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await playlistsResponse.json();
-
       const userOwnedPlaylists = data.items.filter(
         (playlist: { owner: { id: any } }) => playlist.owner.id === userData.id
       );
@@ -173,24 +178,43 @@ const PlaylistsPage: React.FC = () => {
     fetchPlaylists();
   }, [token]);
 
+  const fetchAllTracks = async (playlistId: string) => {
+    let allTracks: Track[] = [];
+    let offset = 0;
+    const limit = 100;
+
+    while (true) {
+      const response = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await response.json();
+
+      const tracks = data.items.map((item: any) => ({
+        id: item.track.id,
+        name: item.track.name,
+        artists: item.track.artists.map((artist: any) => ({
+          name: artist.name,
+        })),
+        albumImage: item.track.album.images[0]?.url || "",
+        previewUrl: item.track.preview_url || "",
+      }));
+
+      allTracks = [...allTracks, ...tracks];
+
+      if (data.items.length < limit) break;
+      offset += limit;
+    }
+
+    return allTracks;
+  };
+
   useEffect(() => {
     state.selectedPlaylists.forEach((playlist) => {
       if (!state.playlistTracks[playlist.id]) {
         const fetchTracks = async () => {
-          const response = await fetch(
-            `https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          const data = await response.json();
-          const tracks = data.items.map((item: any) => ({
-            id: item.track.id,
-            name: item.track.name,
-            artists: item.track.artists.map((artist: any) => ({
-              name: artist.name,
-            })),
-            albumImage: item.track.album.images[0]?.url || "",
-            previewUrl: item.track.preview_url || "",
-          }));
+          const tracks = await fetchAllTracks(playlist.id);
+
           dispatch({
             type: actionTypes.SET_TRACKS,
             payload: { id: playlist.id, tracks },
@@ -213,16 +237,15 @@ const PlaylistsPage: React.FC = () => {
     [currentTrack, isPlaying]
   );
 
-  const allTracks = useMemo(
-    () =>
-      uniqBy(
-        state.selectedPlaylists.flatMap(
-          (playlist) => state.playlistTracks[playlist.id] || []
-        ),
-        (track: Track) => track.id
+  const allTracks = useMemo(() => {
+    const allTracksFlattened = uniqBy(
+      state.selectedPlaylists.flatMap(
+        (playlist) => state.playlistTracks[playlist.id] || []
       ),
-    [state.selectedPlaylists, state.playlistTracks]
-  );
+      (track: Track) => track.id
+    );
+    return allTracksFlattened;
+  }, [state.selectedPlaylists, state.playlistTracks]);
 
   const handlePlaylistToggle = useCallback((playlist: Playlist): void => {
     dispatch({
@@ -270,7 +293,7 @@ const PlaylistsPage: React.FC = () => {
           bValue = b.name.toLowerCase();
         } else {
           aValue = (a as any)[key]?.toString().toLowerCase();
-          bValue = (b as any)[key]?.toString().toLowerCase();
+          bValue = (a as any)[key]?.toString().toLowerCase();
         }
 
         if (aValue < bValue) {
