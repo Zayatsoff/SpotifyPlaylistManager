@@ -8,10 +8,7 @@ interface ArtistComponentProps {
   moreThanXPlaylistsSelected: boolean;
 }
 
-const ArtistComponent: React.FC<ArtistComponentProps> = ({
-  track,
-  moreThanXPlaylistsSelected,
-}) => {
+const ArtistComponent: React.FC<ArtistComponentProps> = ({ track }) => {
   const artistNames = track.artists
     .map((artist: Artist) => artist.name)
     .join(", ");

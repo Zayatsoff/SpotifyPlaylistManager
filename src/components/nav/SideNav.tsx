@@ -3,7 +3,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
-import { Music, Trash2, Edit3 } from "lucide-react";
+import { Trash2, Edit3 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
