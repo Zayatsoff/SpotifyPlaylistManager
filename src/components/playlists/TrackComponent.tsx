@@ -14,7 +14,6 @@ interface TrackComponentProps {
 const TrackComponent: React.FC<TrackComponentProps> = ({
   track,
   isPlaying,
-  moreThanXPlaylistsSelected,
   onPlayPreview,
 }) => {
   return (
