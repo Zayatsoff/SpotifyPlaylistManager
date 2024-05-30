@@ -151,7 +151,9 @@ const SideNav: React.FC<SideNavProps> = ({
                   ) : (
                     <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
                       <img
-                        src={"./src/assets/emptyPlaylist.png"}
+                        src={
+                          "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
+                        }
                         alt={`${playlist.name} cover`}
                         className="w-10 h-10 rounded-md mr-2 shadow-md"
                       />

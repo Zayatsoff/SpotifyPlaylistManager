@@ -573,7 +573,7 @@ const PlaylistsPage: React.FC = () => {
                           <img
                             src={
                               playlist?.images?.[0]?.url ||
-                              "/src/assets/emptyPlaylist.png"
+                              "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
                             }
                             alt={`${playlist?.name || "Playlist"} cover`}
                             className="w-10 h-10 rounded-md"
