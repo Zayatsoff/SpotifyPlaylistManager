@@ -257,7 +257,15 @@ const SideNav: React.FC<SideNavProps> = ({
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>
               This action cannot be undone. This will permanently delete your
-              playlist and remove your data from Spotify servers.
+              playlist and remove your data from Spotify servers. Although, you
+              can always recover playlists within 90 days through{" "}
+              <a
+                href="https://www.spotify.com/ca-en/account/recover-playlists/"
+                className="text-accent"
+              >
+                Spotify's recovery page
+              </a>
+              .
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end mt-4">
