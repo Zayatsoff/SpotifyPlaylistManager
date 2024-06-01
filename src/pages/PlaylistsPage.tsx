@@ -9,14 +9,18 @@ import React, {
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
 import ArtistComponent from "@/components/playlists/ArtistComponent";
-import { Track, Playlist } from "../interfaces/PlaylistInterfaces";
+import {
+  Track,
+  Playlist,
+  State,
+  Action,
+} from "../interfaces/PlaylistInterfaces";
 import SideNav from "@/components/nav/SideNav";
 import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
 import { Plus, Check, ArrowUp, ArrowDownUp, ArrowDown } from "lucide-react";
-import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
 import useErrorHandling from "@/hooks/useErrorHandling";
@@ -44,18 +48,6 @@ const initialState = {
   selectedPlaylists: [],
   playlistTracks: {} as Record<string, Track[]>,
 };
-
-// Define types for State and Action
-interface State {
-  playlists: Playlist[];
-  selectedPlaylists: Playlist[];
-  playlistTracks: Record<string, Track[]>;
-}
-
-interface Action {
-  type: string;
-  payload: any;
-}
 
 // Reducer function
 const reducer = (state: State, action: Action) => {
@@ -126,7 +118,7 @@ const reducer = (state: State, action: Action) => {
 };
 
 const PlaylistsPage: React.FC = () => {
-  const { token } = useSpotifyAuth();
+  const { token, userId } = useSpotifyAuth(); // Assuming userId is available here
   const [state, dispatch] = useReducer(reducer, initialState);
   const [searchQuery, setSearchQuery] = useState("");
   const [showErrorPopup, setShowErrorPopup] = useState(false);
@@ -136,7 +128,7 @@ const PlaylistsPage: React.FC = () => {
   }>({ key: "", direction: null });
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [columnWidths, setColumnWidths] = useState<{
+  const [columnWidths, _] = useState<{
     song: string;
     artist: string;
     playlists: { [key: string]: string };
@@ -153,22 +145,6 @@ const PlaylistsPage: React.FC = () => {
   useErrorHandling(setShowErrorPopup);
 
   useEffect(() => {
-    setColumnWidths((prevColumnWidths) => {
-      const newPlaylistsWidths = { ...prevColumnWidths.playlists };
-      state.selectedPlaylists.forEach((playlist) => {
-        if (!newPlaylistsWidths[playlist.id]) {
-          newPlaylistsWidths[playlist.id] = "3.5rem";
-        }
-      });
-
-      return {
-        ...prevColumnWidths,
-        playlists: newPlaylistsWidths,
-      };
-    });
-  }, [state.selectedPlaylists]);
-
-  useEffect(() => {
     const fetchPlaylists = async () => {
       if (!token) return;
 
@@ -181,29 +157,32 @@ const PlaylistsPage: React.FC = () => {
         return;
       }
 
+      let allPlaylists: any[] = [];
+      let url = `https://api.spotify.com/v1/me/playlists`;
+      let next = true;
+
       try {
-        const userResponse = await fetch("https://api.spotify.com/v1/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const userData = await userResponse.json();
+        while (next) {
+          const playlistsResponse = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await playlistsResponse.json();
+          allPlaylists = [...allPlaylists, ...data.items];
+          // Check if there is a next page
+          if (data.next) {
+            url = data.next;
+          } else {
+            next = false;
 
-        const playlistsResponse = await fetch(
-          `https://api.spotify.com/v1/users/${userData.id}/playlists`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await playlistsResponse.json();
-        const userOwnedPlaylists = data.items.filter(
-          (playlist: { owner: { id: any } }) =>
-            playlist.owner.id === userData.id
-        );
+            console.log("Fetched playlists:", allPlaylists); // Log fetched playlists for debugging
+          }
+        }
 
-        sessionStorage.setItem(
-          "cachedPlaylists",
-          JSON.stringify(userOwnedPlaylists)
-        );
+        sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
+
         dispatch({
           type: actionTypes.SET_PLAYLISTS,
-          payload: userOwnedPlaylists,
+          payload: allPlaylists,
         });
       } catch (error) {
         console.error("Failed to fetch playlists", error);
@@ -480,7 +459,7 @@ const PlaylistsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
+    <div className="w-screen h-screen overflow-hidden bg-background flex flex-col">
       {showErrorPopup && (
         <Dialog open={showErrorPopup} onOpenChange={setShowErrorPopup}>
           <DialogContent>
@@ -496,17 +475,20 @@ const PlaylistsPage: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
-      <div className="w-full h-full row-span-1">
+      <div className="w-full h-full flex-1">
         <TopNav />
       </div>
-      <div className="w-full h-full row-span-11 grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
-        <SideNav
-          playlists={state.playlists}
-          selectedPlaylists={state.selectedPlaylists}
-          onPlaylistToggle={handlePlaylistToggle}
-          onDeletePlaylist={handleDeletePlaylist}
-          onRenamePlaylist={handleRenamePlaylist}
-        />
+      <div className="w-full h-full grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
+        {userId && (
+          <SideNav
+            playlists={state.playlists}
+            selectedPlaylists={state.selectedPlaylists}
+            onPlaylistToggle={handlePlaylistToggle}
+            onDeletePlaylist={handleDeletePlaylist}
+            onRenamePlaylist={handleRenamePlaylist}
+            currentUserId={userId}
+          />
+        )}
         <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
@@ -705,15 +687,22 @@ const PlaylistsPage: React.FC = () => {
                                 }
                               }}
                               key={track.id}
-                              className=" h-14 w-14 flex justify-center items-center"
+                              className="h-14 w-14 flex justify-center items-center"
                             >
-                              <button onClick={handleToggleTrack} className="">
-                                {isInPlaylist ? (
-                                  <Check className="text-primary hover:text-primary/50" />
-                                ) : (
-                                  <Plus className="text-accent hover:text-accent/50" />
-                                )}
-                              </button>
+                              {playlist.owner.id === userId ? (
+                                <button
+                                  onClick={handleToggleTrack}
+                                  className=""
+                                >
+                                  {isInPlaylist ? (
+                                    <Check className="text-primary hover:text-primary/50" />
+                                  ) : (
+                                    <Plus className="text-accent hover:text-accent/50" />
+                                  )}
+                                </button>
+                              ) : (
+                                <Check className="text-muted-foreground" />
+                              )}
                             </div>
                           );
                         }

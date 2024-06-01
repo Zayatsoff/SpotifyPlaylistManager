@@ -9,11 +9,13 @@ import React, {
 export interface SpotifyAuthContextType {
   token: string | null;
   setToken: (token: string | null) => void;
+  userId: string | null;
 }
 
 export const SpotifyAuthContext = createContext<SpotifyAuthContextType>({
   token: null,
   setToken: () => {},
+  userId: null,
 });
 
 export const useSpotifyAuth = () => useContext(SpotifyAuthContext);
@@ -22,8 +24,21 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [token, setTokenState] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchUserId = async (token: string) => {
+      try {
+        const response = await fetch("https://api.spotify.com/v1/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        setUserId(data.id);
+      } catch (error) {
+        console.error("Failed to fetch user ID", error);
+      }
+    };
+
     const hash = window.location.hash;
     let token = window.localStorage.getItem("spotifyToken");
 
@@ -32,6 +47,7 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
       window.location.hash = "";
       if (token) {
         window.localStorage.setItem("spotifyToken", token);
+        fetchUserId(token);
       }
     }
 
@@ -40,6 +56,7 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
     const storedToken = localStorage.getItem("spotifyToken");
     if (storedToken) {
       setTokenState(storedToken);
+      fetchUserId(storedToken);
     }
 
     return () => {
@@ -51,14 +68,28 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
     if (token === null) {
       localStorage.removeItem("spotifyToken"); // Clear token from storage on logout or invalidation
       sessionStorage.clear(); // Clear session storage on logout
+      setUserId(null); // Clear userId on logout
     } else {
       localStorage.setItem("spotifyToken", token); // Save token to storage
+      fetchUserId(token); // Fetch user ID for the new token
     }
     setTokenState(token);
   };
 
+  const fetchUserId = async (token: string) => {
+    try {
+      const response = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      setUserId(data.id);
+    } catch (error) {
+      console.error("Failed to fetch user ID", error);
+    }
+  };
+
   return (
-    <SpotifyAuthContext.Provider value={{ token, setToken }}>
+    <SpotifyAuthContext.Provider value={{ token, setToken, userId }}>
       {children}
     </SpotifyAuthContext.Provider>
   );

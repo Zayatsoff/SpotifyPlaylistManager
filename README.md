@@ -28,6 +28,7 @@
 - [x] Add feature: Song preview
 - [x] Add feature: Option to rename and delete playlists
 - [x] Bug: `PlaylistPage` ~~no longer fetches from spotify, uses cached data instead~~ The playlist page was only displayuing 100 tracks.
+- [x] Add feature: "Other playlist" tab
 - [ ] Bug: `PlaylistPage` lags when there are too many tracks/playlists, need to only load tracks based on scrolling.
 - [ ] Bug: Add loading when loading
 - [ ] Add feature: History

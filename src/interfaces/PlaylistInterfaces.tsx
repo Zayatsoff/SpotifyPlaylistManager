@@ -3,15 +3,31 @@ export interface Track {
   id: string;
   name: string;
   albumImage: string;
-  previewUrl: string; // Add this line
+  previewUrl: string;
 }
 
 export interface Playlist {
   id: string;
   name: string;
   images: { url: string }[];
+  owner: { id: string };
 }
 
 export interface Artist {
   name: string;
+}
+
+export interface Owner {
+  id: string;
+}
+
+export interface State {
+  playlists: Playlist[];
+  selectedPlaylists: Playlist[];
+  playlistTracks: Record<string, Track[]>;
+}
+
+export interface Action {
+  type: string;
+  payload: any;
 }
