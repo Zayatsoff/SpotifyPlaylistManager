@@ -6,7 +6,7 @@ import CustomTooltip from "../ui/CustomTooltip";
 
 export default function TopNav() {
   return (
-    <div className="w-full h-full p-4 flex flex-row justify-between items-center">
+    <div className="w-full h-30 p-4 flex flex-row justify-between items-center">
       <div className="w-96 ">
         <Logo className="text-foreground w-full drop-shadow-[0_2px_5px_rgba(0,0,0,0.05)]" />
       </div>

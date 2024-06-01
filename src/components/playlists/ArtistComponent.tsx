@@ -13,7 +13,7 @@ const ArtistComponent: React.FC<ArtistComponentProps> = ({ track }) => {
     .map((artist: Artist) => artist.name)
     .join(", ");
   return (
-    <div key={track.id} className="text-base p-1 h-14 flex items-center">
+    <div key={track.id} className="text-base h-14 flex items-center">
       <CustomTooltip
         children={<div>{truncateText(artistNames, 20)}</div>}
         description={artistNames}

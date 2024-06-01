@@ -19,12 +19,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-
-interface Playlist {
-  id: string;
-  name: string;
-  images: { url: string }[];
-}
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Playlist } from "@/interfaces/PlaylistInterfaces";
 
 interface SideNavProps {
   playlists: Playlist[] | null;
@@ -32,6 +28,7 @@ interface SideNavProps {
   onPlaylistToggle: (playlist: Playlist) => void;
   onDeletePlaylist: (playlistId: string) => void;
   onRenamePlaylist: (playlistId: string, newName: string) => void;
+  currentUserId: string;
 }
 
 const SideNav: React.FC<SideNavProps> = ({
@@ -40,6 +37,7 @@ const SideNav: React.FC<SideNavProps> = ({
   onPlaylistToggle,
   onDeletePlaylist,
   onRenamePlaylist,
+  currentUserId,
 }) => {
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,6 +49,18 @@ const SideNav: React.FC<SideNavProps> = ({
     left: number;
   } | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [tabValue, setTabValue] = useState("owned");
+
+  if (!playlists) {
+    return null;
+  }
+
+  const ownedPlaylists = playlists?.filter(
+    (playlist) => playlist.owner.id === currentUserId
+  );
+  const otherPlaylists = playlists?.filter(
+    (playlist) => playlist.owner.id !== currentUserId
+  );
 
   const maxPlaylistsSelected = selectedPlaylists.length >= 9;
 
@@ -106,147 +116,235 @@ const SideNav: React.FC<SideNavProps> = ({
   };
 
   return (
-    <Card className="w-full h-full bg-card overflow-hidden">
-      <ScrollArea className="w-full h-full">
-        <CardHeader>Playlists</CardHeader>
-        <CardContent>
-          <ul>
-            {playlists?.map((playlist) => {
-              const isSelected = selectedPlaylists.some(
-                (selectedPlaylist) => selectedPlaylist.id === playlist.id
-              );
-              const listItemClass = isSelected
-                ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-md transition-all ease-out"
-                : maxPlaylistsSelected
-                ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
-                : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
-              const trashClass =
-                hoveredPlaylist === playlist.id
-                  ? "w-5 h-5  cursor-pointer text-destructive hover:text-foreground transition-all"
-                  : "w-5 h-5 cursor-pointer text-destructive/0";
-              const editClass =
-                hoveredPlaylist === playlist.id
-                  ? "w-5 h-5 ml-auto cursor-pointer text-primary hover:text-foreground transition-all"
-                  : "w-5 h-5 ml-auto cursor-pointer text-primary/0";
+    <Card className="w-80 h-full bg-card overflow-hidden">
+      <Tabs
+        value={tabValue}
+        onValueChange={setTabValue}
+        className="w-full h-full"
+      >
+        <TabsList>
+          <TabsTrigger value="owned">Playlists</TabsTrigger>
+          <TabsTrigger value="others">Other</TabsTrigger>
+          <TabsTrigger value="recommended">Recommended </TabsTrigger>
+        </TabsList>
+        <ScrollArea className="w-full h-full">
+          <TabsContent value="owned" className="w-full h-full">
+            <CardHeader>Owned Playlists</CardHeader>
+            <CardContent>
+              <ul>
+                {ownedPlaylists?.map((playlist) => {
+                  const isSelected = selectedPlaylists.some(
+                    (selectedPlaylist) => selectedPlaylist.id === playlist.id
+                  );
+                  const listItemClass = isSelected
+                    ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-md transition-all ease-out"
+                    : maxPlaylistsSelected
+                    ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
+                    : "rounded-xl flex items-center bg-card mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
+                  const trashClass =
+                    hoveredPlaylist === playlist.id
+                      ? "w-5 h-5  cursor-pointer text-destructive hover:text-foreground transition-all"
+                      : "w-5 h-5 cursor-pointer text-destructive/0";
+                  const editClass =
+                    hoveredPlaylist === playlist.id
+                      ? "w-5 h-5 ml-auto cursor-pointer text-primary hover:text-foreground transition-all"
+                      : "w-5 h-5 ml-auto cursor-pointer text-primary/0";
 
-              const handleClick = () => {
-                if (!isSelected && maxPlaylistsSelected) return;
-                onPlaylistToggle(playlist);
-              };
+                  const handleClick = () => {
+                    if (!isSelected && maxPlaylistsSelected) return;
+                    onPlaylistToggle(playlist);
+                  };
 
-              return (
-                <li
-                  key={playlist.id}
-                  className={listItemClass}
-                  onClick={handleClick}
-                  onMouseEnter={() => setHoveredPlaylist(playlist.id)}
-                  onMouseLeave={() => setHoveredPlaylist(null)}
-                >
-                  {playlist.images && playlist.images.length > 0 ? (
-                    <img
-                      src={playlist.images[0].url}
-                      alt={`${playlist.name} cover`}
-                      className="w-10 h-10 rounded-md mr-2 shadow-md"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
-                      <img
-                        src={"./src/assets/emptyPlaylist.png"}
-                        alt={`${playlist.name} cover`}
-                        className="w-10 h-10 rounded-md mr-2 shadow-md"
-                      />
-                    </div>
-                  )}
-                  <span>
-                    <CustomTooltip
-                      children={truncateText(playlist.name, 20)}
-                      description={playlist.name}
-                      time={300}
-                    />
-                  </span>
-                  <Popover
-                    open={popoverOpen}
-                    onOpenChange={handlePopoverOpenChange}
-                  >
-                    <PopoverTrigger asChild>
-                      <div className={`${editClass}`}>
+                  return (
+                    <li
+                      key={playlist.id}
+                      className={listItemClass}
+                      onClick={handleClick}
+                      onMouseEnter={() => setHoveredPlaylist(playlist.id)}
+                      onMouseLeave={() => setHoveredPlaylist(null)}
+                    >
+                      {playlist.images && playlist.images.length > 0 ? (
+                        <img
+                          src={playlist.images[0].url}
+                          alt={`${playlist.name} cover`}
+                          className="w-10 h-10 rounded-md mr-2 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
+                          <img
+                            src={
+                              "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
+                            }
+                            alt={`${playlist.name} cover`}
+                            className="w-10 h-10 rounded-md mr-2 shadow-md"
+                          />
+                        </div>
+                      )}
+                      <span>
+                        <CustomTooltip
+                          children={truncateText(playlist.name, 20)}
+                          description={playlist.name}
+                          time={300}
+                        />
+                      </span>
+                      <Popover
+                        open={popoverOpen}
+                        onOpenChange={handlePopoverOpenChange}
+                      >
+                        <PopoverTrigger asChild>
+                          <div className={`${editClass}`}>
+                            <CustomTooltip
+                              children={
+                                <Edit3
+                                  className={`${editClass}`}
+                                  onClick={(e) =>
+                                    handleRenameClick(
+                                      e,
+                                      playlist.id,
+                                      playlist.name
+                                    )
+                                  }
+                                />
+                              }
+                              description="Rename"
+                              time={300}
+                            />
+                          </div>
+                        </PopoverTrigger>
+                        {popoverOpen &&
+                          playlistToRename === playlist.id &&
+                          renamePosition && (
+                            <PopoverContent
+                              className="transform"
+                              style={{
+                                position: "absolute",
+                                top: -30,
+                              }}
+                            >
+                              <div className="flex flex-col p-4">
+                                <div className="text-foreground text-md pb-3">
+                                  Rename{" "}
+                                  <span className="font-semibold">
+                                    {playlist.name}{" "}
+                                  </span>
+                                  :
+                                </div>
+                                <Input
+                                  type="text"
+                                  value={newPlaylistName}
+                                  onChange={(e) =>
+                                    setNewPlaylistName(e.target.value)
+                                  }
+                                  placeholder="New playlist name"
+                                  className="mb-2"
+                                />
+                                <div className="pt-3 flex justify-end items-center">
+                                  <Button
+                                    className="mr-2"
+                                    onClick={handleRenameSave}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    onClick={handleCancelRename}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          )}
+                      </Popover>
+                      <div className={`${trashClass} `}>
                         <CustomTooltip
                           children={
-                            <Edit3
-                              className={`${editClass}`}
-                              onClick={(e) =>
-                                handleRenameClick(e, playlist.id, playlist.name)
-                              }
+                            <Trash2
+                              className={`${trashClass} ml-2`}
+                              onClick={(e) => handleDeleteClick(e, playlist.id)}
                             />
                           }
-                          description="Rename"
+                          description="Delete"
                           time={300}
                         />
                       </div>
-                    </PopoverTrigger>
-                    {popoverOpen &&
-                      playlistToRename === playlist.id &&
-                      renamePosition && (
-                        <PopoverContent
-                          className="transform"
-                          style={{
-                            position: "absolute",
-                            top: -30,
-                          }}
-                        >
-                          <div className="flex flex-col p-4">
-                            <div className="text-foreground text-md pb-3">
-                              Rename{" "}
-                              <span className="font-semibold">
-                                {playlist.name}{" "}
-                              </span>
-                              :
-                            </div>
-                            <Input
-                              type="text"
-                              value={newPlaylistName}
-                              onChange={(e) =>
-                                setNewPlaylistName(e.target.value)
-                              }
-                              placeholder="New playlist name"
-                              className="mb-2"
-                            />
-                            <div className="pt-3 flex justify-end items-center">
-                              <Button
-                                className="mr-2"
-                                onClick={handleRenameSave}
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                onClick={handleCancelRename}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      )}
-                  </Popover>
-                  <div className={`${trashClass} `}>
-                    <CustomTooltip
-                      children={
-                        <Trash2
-                          className={`${trashClass} ml-2`}
-                          onClick={(e) => handleDeleteClick(e, playlist.id)}
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </TabsContent>
+        </ScrollArea>
+        <ScrollArea className="w-full h-full">
+          <TabsContent value="others" className="w-full h-full">
+            <CardHeader>Other Playlists</CardHeader>
+            <CardContent>
+              <ul>
+                {otherPlaylists?.map((playlist) => {
+                  const isSelected = selectedPlaylists.some(
+                    (selectedPlaylist) => selectedPlaylist.id === playlist.id
+                  );
+                  const listItemClass = isSelected
+                    ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-md transition-all ease-out"
+                    : maxPlaylistsSelected
+                    ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
+                    : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
+
+                  const handleClick = () => {
+                    if (!isSelected && maxPlaylistsSelected) return;
+                    onPlaylistToggle(playlist);
+                  };
+
+                  return (
+                    <li
+                      key={playlist.id}
+                      className={listItemClass}
+                      onClick={handleClick}
+                      onMouseEnter={() => setHoveredPlaylist(playlist.id)}
+                      onMouseLeave={() => setHoveredPlaylist(null)}
+                    >
+                      {playlist.images && playlist.images.length > 0 ? (
+                        <img
+                          src={playlist.images[0].url}
+                          alt={`${playlist.name} cover`}
+                          className="w-10 h-10 rounded-md mr-2 shadow-md"
                         />
-                      }
-                      description="Delete"
-                      time={300}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </CardContent>
-      </ScrollArea>
+                      ) : (
+                        <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
+                          <img
+                            src={
+                              "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
+                            }
+                            alt={`${playlist.name} cover`}
+                            className="w-10 h-10 rounded-md mr-2 shadow-md"
+                          />
+                        </div>
+                      )}
+                      <span>
+                        <CustomTooltip
+                          children={truncateText(playlist.name, 20)}
+                          description={playlist.name}
+                          time={300}
+                        />
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </TabsContent>
+        </ScrollArea>
+        <ScrollArea className="w-full h-full">
+          <TabsContent value="recommended" className="w-full h-full">
+            <CardHeader>Recommended Playlists</CardHeader>
+            <CardContent>
+              <ul>
+                <div>TBA</div>
+              </ul>
+            </CardContent>
+          </TabsContent>
+        </ScrollArea>
+      </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>

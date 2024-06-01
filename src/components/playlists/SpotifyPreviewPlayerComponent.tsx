@@ -149,45 +149,53 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
   }, [isDragging]);
 
   return (
-    <div className="flex items-center px-3 pb-3">
-      <img
-        src={track.albumImage || ""}
-        alt={track.name}
-        className="w-20 h-20 rounded-md mr-3 shadow-md"
-      />
-      <div className="flex flex-col mr-3">
-        <span className="text-lg font-bold text-foreground">{track.name}</span>
-        <span className="text-sm text-foreground">{track.artists[0].name}</span>
-      </div>
-      <button onClick={() => onPlayPreview(track)} className="mr-3">
-        {isPlaying ? (
-          <div className="w-8 h-8 text-foreground bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
-            <Pause className="w-5 h-5 " />
-          </div>
-        ) : (
-          <div className="w-8 h-8 text-foreground bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
-            <Play className="w-5 h-5  " />
-          </div>
-        )}
-      </button>
-      <div
-        className=" w-full flex-1 h-1 bg-muted rounded relative mr-6"
-        onClick={handleProgressClick}
-        ref={progressBarRef}
-      >
-        <div
-          className="w-full h-full bg-accent rounded relative"
-          style={{ width: `${progress}%` }}
-        >
-          <div
-            className={`absolute right-[-4px] top-1/2 transform -translate-y-1/2 bg-accent rounded-full transition-all ease-in-out h-4 w-4 hover:w-5 hover:h-5 hover:right-[-5px]${
-              isDragging ? "w-5 h-5 right-[-5px]" : ""
-            }`}
-            onMouseDown={handleMouseDown}
-          />
+    <div className="flex items-center px-3 pb-3 ">
+      <div className="flex items-center w-96">
+        <img
+          src={track.albumImage || ""}
+          alt={track.name}
+          className="w-20 h-20 rounded-md mr-3 shadow-md"
+        />
+        <div className="flex flex-col mr-3">
+          <span className="text-lg font-bold text-foreground">
+            {track.name}
+          </span>
+          <span className="text-sm text-foreground">
+            {track.artists[0].name}
+          </span>
         </div>
       </div>
-      <audio ref={audioRef} />
+      <div className="flex items-center w-3/4">
+        <button onClick={() => onPlayPreview(track)} className="mr-3">
+          {isPlaying ? (
+            <div className="w-8 h-8 text-accent fill-accent hover:text-muted hover:fill-muted rounded-full flex items-center justify-center mr-3 transition-all ease-out">
+              <Pause fill="" className="w-5 h-5 " />
+            </div>
+          ) : (
+            <div className="w-8 h-8 text-accent fill-accent hover:text-muted hover:fill-muted rounded-full flex items-center justify-center mr-3 transition-all ease-out">
+              <Play fill="" className="w-5 h-5  " />
+            </div>
+          )}
+        </button>
+        <div
+          className=" w-full flex-1 h-1 bg-muted rounded relative mr-6"
+          onClick={handleProgressClick}
+          ref={progressBarRef}
+        >
+          <div
+            className="w-full h-full bg-accent rounded relative"
+            style={{ width: `${progress}%` }}
+          >
+            <div
+              className={`absolute right-[-4px] top-1/2 transform -translate-y-1/2 bg-accent rounded-full transition-all ease-in-out h-4 w-4 hover:w-5 hover:h-5 hover:right-[-5px]${
+                isDragging ? "w-5 h-5 right-[-5px]" : ""
+              }`}
+              onMouseDown={handleMouseDown}
+            />
+          </div>
+        </div>
+        <audio ref={audioRef} />
+      </div>
     </div>
   );
 };

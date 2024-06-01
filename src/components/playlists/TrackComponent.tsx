@@ -17,15 +17,15 @@ const TrackComponent: React.FC<TrackComponentProps> = ({
   onPlayPreview,
 }) => {
   return (
-    <div className="flex p-1 items-center h-14">
+    <div className="flex items-center h-14">
       <button onClick={() => onPlayPreview(track)} className="ml-3">
         {isPlaying ? (
-          <div className="w-8 h-8 bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
-            <Pause className="w-5 h-5 " />
+          <div className="w-8 h-8 text-accent fill-accent hover:text-muted hover:fill-muted rounded-full flex items-center justify-center mr-3 transition-all ease-out">
+            <Pause fill="" className="w-5 h-5 " />
           </div>
         ) : (
-          <div className="w-8 h-8 bg-accent/30 hover:bg-accent/70 rounded-full flex items-center justify-center mr-3 transition-all ease-out">
-            <Play className="w-5 h-5  " />
+          <div className="w-8 h-8 text-accent fill-accent hover:text-muted hover:fill-muted rounded-full flex items-center justify-center mr-3 transition-all ease-out ">
+            <Play fill="" className="w-5 h-5  " />
           </div>
         )}
       </button>

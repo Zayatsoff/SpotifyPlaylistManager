@@ -9,14 +9,18 @@ import React, {
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
 import ArtistComponent from "@/components/playlists/ArtistComponent";
-import { Track, Playlist } from "../interfaces/PlaylistInterfaces";
+import {
+  Track,
+  Playlist,
+  State,
+  Action,
+} from "../interfaces/PlaylistInterfaces";
 import SideNav from "@/components/nav/SideNav";
 import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
-import { Plus, Check, ArrowUp, ArrowDownUp } from "lucide-react";
-import { truncateText } from "@/utils/textHelpers";
+import { Plus, Check, ArrowUp, ArrowDownUp, ArrowDown } from "lucide-react";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
 import useErrorHandling from "@/hooks/useErrorHandling";
@@ -29,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
 
+// Define action types and initial state outside of the component
 const actionTypes = {
   SET_PLAYLISTS: "SET_PLAYLISTS",
   TOGGLE_PLAYLIST_SELECTION: "TOGGLE_PLAYLIST_SELECTION",
@@ -44,17 +49,7 @@ const initialState = {
   playlistTracks: {} as Record<string, Track[]>,
 };
 
-interface State {
-  playlists: Playlist[];
-  selectedPlaylists: Playlist[];
-  playlistTracks: Record<string, Track[]>;
-}
-
-interface Action {
-  type: string;
-  payload: any;
-}
-
+// Reducer function
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
     case actionTypes.SET_PLAYLISTS:
@@ -123,7 +118,7 @@ const reducer = (state: State, action: Action) => {
 };
 
 const PlaylistsPage: React.FC = () => {
-  const { token } = useSpotifyAuth();
+  const { token, userId } = useSpotifyAuth(); // Assuming userId is available here
   const [state, dispatch] = useReducer(reducer, initialState);
   const [searchQuery, setSearchQuery] = useState("");
   const [showErrorPopup, setShowErrorPopup] = useState(false);
@@ -133,11 +128,15 @@ const PlaylistsPage: React.FC = () => {
   }>({ key: "", direction: null });
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [columnWidths, setColumnWidths] = useState<{
-    song: number;
-    artist: number;
-    playlists: { [key: string]: number };
-  }>({ song: 150, artist: 150, playlists: {} });
+  const [columnWidths, _] = useState<{
+    song: string;
+    artist: string;
+    playlists: { [key: string]: string };
+  }>({
+    song: "20rem",
+    artist: "14rem",
+    playlists: {},
+  });
 
   const songRefs = useRef<(HTMLDivElement | null)[]>([]);
   const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -147,9 +146,7 @@ const PlaylistsPage: React.FC = () => {
 
   useEffect(() => {
     const fetchPlaylists = async () => {
-      if (!token) {
-        return;
-      }
+      if (!token) return;
 
       const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
       if (cachedPlaylists) {
@@ -157,30 +154,39 @@ const PlaylistsPage: React.FC = () => {
           type: actionTypes.SET_PLAYLISTS,
           payload: JSON.parse(cachedPlaylists),
         });
+        return;
       }
 
-      const userResponse = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const userData = await userResponse.json();
+      let allPlaylists: any[] = [];
+      let url = `https://api.spotify.com/v1/me/playlists`;
+      let next = true;
 
-      const playlistsResponse = await fetch(
-        `https://api.spotify.com/v1/users/${userData.id}/playlists`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await playlistsResponse.json();
-      const userOwnedPlaylists = data.items.filter(
-        (playlist: { owner: { id: any } }) => playlist.owner.id === userData.id
-      );
+      try {
+        while (next) {
+          const playlistsResponse = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await playlistsResponse.json();
+          allPlaylists = [...allPlaylists, ...data.items];
+          // Check if there is a next page
+          if (data.next) {
+            url = data.next;
+          } else {
+            next = false;
 
-      sessionStorage.setItem(
-        "cachedPlaylists",
-        JSON.stringify(userOwnedPlaylists)
-      );
-      dispatch({
-        type: actionTypes.SET_PLAYLISTS,
-        payload: userOwnedPlaylists,
-      });
+            console.log("Fetched playlists:", allPlaylists); // Log fetched playlists for debugging
+          }
+        }
+
+        sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
+
+        dispatch({
+          type: actionTypes.SET_PLAYLISTS,
+          payload: allPlaylists,
+        });
+      } catch (error) {
+        console.error("Failed to fetch playlists", error);
+      }
     };
 
     fetchPlaylists();
@@ -191,31 +197,36 @@ const PlaylistsPage: React.FC = () => {
     let offset = 0;
     const limit = 100;
 
-    while (true) {
-      const response = await fetch(
-        `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await response.json();
+    try {
+      while (true) {
+        const response = await fetch(
+          `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await response.json();
 
-      const tracks = data.items.map((item: any) => ({
-        id: item.track.id,
-        name: item.track.name,
-        artists: item.track.artists.map((artist: any) => ({
-          name: artist.name,
-        })),
-        albumImage: item.track.album.images[0]?.url || "",
-        previewUrl: item.track.preview_url || "",
-      }));
+        const tracks = data.items.map((item: any) => ({
+          id: item.track.id,
+          name: item.track.name,
+          artists: item.track.artists.map((artist: any) => ({
+            name: artist.name,
+          })),
+          albumImage: item.track.album.images[0]?.url || "",
+          previewUrl: item.track.preview_url || "",
+        }));
 
-      allTracks = [...allTracks, ...tracks];
+        allTracks = [...allTracks, ...tracks];
 
-      if (data.items.length < limit) break;
-      offset += limit;
+        if (data.items.length < limit) break;
+        offset += limit;
+      }
+    } catch (error) {
+      console.error("Failed to fetch tracks", error);
     }
 
     return allTracks;
   };
+
   useEffect(() => {
     const fetchTracks = async (playlistId: string) => {
       const cachedTracks = sessionStorage.getItem(`cachedTracks_${playlistId}`);
@@ -224,6 +235,7 @@ const PlaylistsPage: React.FC = () => {
           type: actionTypes.SET_TRACKS,
           payload: { id: playlistId, tracks: JSON.parse(cachedTracks) },
         });
+        return;
       }
 
       const tracks = await fetchAllTracks(playlistId);
@@ -240,8 +252,6 @@ const PlaylistsPage: React.FC = () => {
     state.selectedPlaylists.forEach((playlist) => {
       if (!state.playlistTracks[playlist.id]) {
         fetchTracks(playlist.id);
-      } else {
-        fetchTracks(playlist.id); // Ensure tracks are always updated
       }
     });
   }, [state.selectedPlaylists, token]);
@@ -259,13 +269,12 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const allTracks = useMemo(() => {
-    const allTracksFlattened = uniqBy(
+    return uniqBy(
       state.selectedPlaylists.flatMap(
         (playlist) => state.playlistTracks[playlist.id] || []
       ),
       (track: Track) => track.id
     );
-    return allTracksFlattened;
   }, [state.selectedPlaylists, state.playlistTracks]);
 
   const handlePlaylistToggle = useCallback((playlist: Playlist): void => {
@@ -330,34 +339,42 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const handleRenamePlaylist = async (playlistId: string, newName: string) => {
-    await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: newName }),
-    });
-    dispatch({
-      type: actionTypes.SET_PLAYLISTS,
-      payload: state.playlists.map((playlist) =>
-        playlist.id === playlistId ? { ...playlist, name: newName } : playlist
-      ),
-    });
+    try {
+      await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+      dispatch({
+        type: actionTypes.SET_PLAYLISTS,
+        payload: state.playlists.map((playlist) =>
+          playlist.id === playlistId ? { ...playlist, name: newName } : playlist
+        ),
+      });
+    } catch (error) {
+      console.error("Failed to rename playlist", error);
+    }
   };
 
   const handleDeletePlaylist = async (playlistId: string) => {
-    await fetch(
-      `https://api.spotify.com/v1/playlists/${playlistId}/followers`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    dispatch({
-      type: actionTypes.DELETE_PLAYLIST,
-      payload: playlistId,
-    });
+    try {
+      await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/followers`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      dispatch({
+        type: actionTypes.DELETE_PLAYLIST,
+        payload: playlistId,
+      });
+    } catch (error) {
+      console.error("Failed to delete playlist", error);
+    }
   };
 
   const filteredTracks = useMemo(
@@ -386,18 +403,22 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const addTrackToPlaylist = async (playlistId: string, trackUri: string) => {
-    const response = await fetch(
-      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ uris: [trackUri] }),
-      }
-    );
-    return response.json();
+    try {
+      const response = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ uris: [trackUri] }),
+        }
+      );
+      return response.json();
+    } catch (error) {
+      console.error("Failed to add track to playlist", error);
+    }
   };
 
   const moreThanXPlaylistsSelected = state.selectedPlaylists.length > 8;
@@ -406,18 +427,22 @@ const PlaylistsPage: React.FC = () => {
     playlistId: string,
     trackUri: string
   ) => {
-    const response = await fetch(
-      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ tracks: [{ uri: trackUri }] }),
-      }
-    );
-    return response.json();
+    try {
+      const response = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ tracks: [{ uri: trackUri }] }),
+        }
+      );
+      return response.json();
+    } catch (error) {
+      console.error("Failed to remove track from playlist", error);
+    }
   };
 
   useEffect(() => {
@@ -433,47 +458,8 @@ const PlaylistsPage: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  const measureTextWidth = (
-    text: string,
-    font: string = "20px Arial"
-  ): number => {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (context) {
-      context.font = font;
-      return context.measureText(text).width;
-    }
-    return 0;
-  };
-
-  useEffect(() => {
-    const measureColumnWidths = () => {
-      const songWidths = filteredAndSearchedTracks.map((track) =>
-        measureTextWidth(truncateText(track.name, 23))
-      );
-      const artistWidths = filteredAndSearchedTracks.map((track) =>
-        measureTextWidth(
-          truncateText(
-            track.artists.map((artist) => artist.name).join(", "),
-            23
-          )
-        )
-      );
-
-      const maxSongWidth = Math.max(...songWidths, 150);
-      const maxArtistWidth = Math.max(...artistWidths, 150);
-      setColumnWidths((prevColumnWidths) => ({
-        ...prevColumnWidths,
-        song: maxSongWidth + 50,
-        artist: maxArtistWidth + 5,
-      }));
-    };
-
-    measureColumnWidths();
-  }, [state.selectedPlaylists, filteredAndSearchedTracks]);
-
   return (
-    <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
+    <div className="w-screen h-screen overflow-hidden bg-background flex flex-col">
       {showErrorPopup && (
         <Dialog open={showErrorPopup} onOpenChange={setShowErrorPopup}>
           <DialogContent>
@@ -489,21 +475,24 @@ const PlaylistsPage: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
-      <div className="w-full h-full row-span-1">
+      <div className="w-full h-full flex-1">
         <TopNav />
       </div>
-      <div className="w-full h-full row-span-11 grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
-        <SideNav
-          playlists={state.playlists}
-          selectedPlaylists={state.selectedPlaylists}
-          onPlaylistToggle={handlePlaylistToggle}
-          onDeletePlaylist={handleDeletePlaylist}
-          onRenamePlaylist={handleRenamePlaylist}
-        />
+      <div className="w-full h-full grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
+        {userId && (
+          <SideNav
+            playlists={state.playlists}
+            selectedPlaylists={state.selectedPlaylists}
+            onPlaylistToggle={handlePlaylistToggle}
+            onDeletePlaylist={handleDeletePlaylist}
+            onRenamePlaylist={handleRenamePlaylist}
+            currentUserId={userId}
+          />
+        )}
         <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
-            <div className="py-3 w-4/5 ">
+            <div className="pt-3 w-full">
               <Input
                 type="text"
                 placeholder="Search for a song or artist in your playlist"
@@ -514,11 +503,11 @@ const PlaylistsPage: React.FC = () => {
             </div>
           </CardHeader>
           <div className="w-full h-full flex flex-col overflow-auto">
-            <div className="sticky top-0 z-10 bg-background">
+            <div className="pl-3 sticky top-0 z-10 bg-background">
               <div className="w-full flex">
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.song}px` }}
+                  style={{ minWidth: `${columnWidths.song}` }}
                 >
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
@@ -529,7 +518,7 @@ const PlaylistsPage: React.FC = () => {
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
                       ) : (
-                        <ArrowDownUp className="ml-1 w-4 h-4" />
+                        <ArrowDown className="ml-1 w-4 h-4" />
                       )
                     ) : (
                       <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
@@ -538,7 +527,7 @@ const PlaylistsPage: React.FC = () => {
                 </div>
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.artist}px` }}
+                  style={{ minWidth: `${columnWidths.artist}` }}
                 >
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
@@ -549,7 +538,7 @@ const PlaylistsPage: React.FC = () => {
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
                       ) : (
-                        <ArrowDownUp className="ml-1 w-4 h-4" />
+                        <ArrowDown className="ml-1 w-4 h-4" />
                       )
                     ) : (
                       <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
@@ -561,11 +550,11 @@ const PlaylistsPage: React.FC = () => {
                     key={playlist.id}
                     className="flex flex-col"
                     style={{
-                      width: `${columnWidths.playlists[playlist.id]}px`,
+                      minWidth: `${columnWidths.playlists[playlist.id]}`,
                     }}
                   >
                     <div
-                      className="h-14 w-20 cursor-pointer flex flex-row items-center justify-center"
+                      className="h-14 w-14 cursor-pointer flex flex-row items-center justify-center"
                       onClick={() => handleSort(playlist.id)}
                     >
                       <CustomTooltip
@@ -573,24 +562,19 @@ const PlaylistsPage: React.FC = () => {
                           <img
                             src={
                               playlist?.images?.[0]?.url ||
-                              "/src/assets/emptyPlaylist.png"
+                              "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
                             }
                             alt={`${playlist?.name || "Playlist"} cover`}
-                            className="w-10 h-10 rounded-md"
+                            className={`w-10 h-10 rounded-md ${
+                              sortConfig.key === playlist.id
+                                ? "outline outline-3 outline-accent drop-shadow-3d"
+                                : "drop-shadow-3d"
+                            }`}
                           />
                         }
                         description={playlist.name}
                         time={200}
                       />
-                      {sortConfig.key === playlist.id ? (
-                        sortConfig.direction === "ascending" ? (
-                          <ArrowUp className="ml-1 w-4 h-4" />
-                        ) : (
-                          <ArrowUp className="ml-1 w-4 h-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="ml-1 w-4 h-4 text-muted-foreground" />
-                      )}
                     </div>
                   </div>
                 ))}
@@ -600,7 +584,7 @@ const PlaylistsPage: React.FC = () => {
               <CardContent className="w-full flex p-3">
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.song}px` }}
+                  style={{ minWidth: `${columnWidths.song}` }}
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
@@ -628,7 +612,7 @@ const PlaylistsPage: React.FC = () => {
                 </div>
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.artist}px` }}
+                  style={{ minWidth: `${columnWidths.artist}` }}
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
@@ -653,9 +637,9 @@ const PlaylistsPage: React.FC = () => {
                 {state.selectedPlaylists.map((playlist: Playlist) => (
                   <div
                     key={playlist.id}
-                    className="flex flex-col "
+                    className="flex flex-col"
                     style={{
-                      width: `${columnWidths.playlists[playlist.id]}px`,
+                      minWidth: `${columnWidths.playlists[playlist.id]}`,
                     }}
                   >
                     <div className="flex flex-col gap-6">
@@ -703,15 +687,22 @@ const PlaylistsPage: React.FC = () => {
                                 }
                               }}
                               key={track.id}
-                              className=" ml-[0.72rem] h-14 w-[4.2rem] flex justify-start items-center"
+                              className="h-14 w-14 flex justify-center items-center"
                             >
-                              <button onClick={handleToggleTrack} className="">
-                                {isInPlaylist ? (
-                                  <Check className="text-primary hover:text-primary/50" />
-                                ) : (
-                                  <Plus className="text-accent hover:text-accent/50" />
-                                )}
-                              </button>
+                              {playlist.owner.id === userId ? (
+                                <button
+                                  onClick={handleToggleTrack}
+                                  className=""
+                                >
+                                  {isInPlaylist ? (
+                                    <Check className="text-primary hover:text-primary/50" />
+                                  ) : (
+                                    <Plus className="text-accent hover:text-accent/50" />
+                                  )}
+                                </button>
+                              ) : (
+                                <Check className="text-muted-foreground" />
+                              )}
                             </div>
                           );
                         }
