@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
 
+// Define action types and initial state outside of the component
 const actionTypes = {
   SET_PLAYLISTS: "SET_PLAYLISTS",
   TOGGLE_PLAYLIST_SELECTION: "TOGGLE_PLAYLIST_SELECTION",
@@ -44,6 +45,7 @@ const initialState = {
   playlistTracks: {} as Record<string, Track[]>,
 };
 
+// Define types for State and Action
 interface State {
   playlists: Playlist[];
   selectedPlaylists: Playlist[];
@@ -55,6 +57,7 @@ interface Action {
   payload: any;
 }
 
+// Reducer function
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
     case actionTypes.SET_PLAYLISTS:
@@ -148,6 +151,7 @@ const PlaylistsPage: React.FC = () => {
   const playlistRefs = useRef<{ [key: string]: (HTMLDivElement | null)[] }>({});
 
   useErrorHandling(setShowErrorPopup);
+
   useEffect(() => {
     setColumnWidths((prevColumnWidths) => {
       const newPlaylistsWidths = { ...prevColumnWidths.playlists };
@@ -163,11 +167,10 @@ const PlaylistsPage: React.FC = () => {
       };
     });
   }, [state.selectedPlaylists]);
+
   useEffect(() => {
     const fetchPlaylists = async () => {
-      if (!token) {
-        return;
-      }
+      if (!token) return;
 
       const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
       if (cachedPlaylists) {
@@ -175,30 +178,36 @@ const PlaylistsPage: React.FC = () => {
           type: actionTypes.SET_PLAYLISTS,
           payload: JSON.parse(cachedPlaylists),
         });
+        return;
       }
 
-      const userResponse = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const userData = await userResponse.json();
+      try {
+        const userResponse = await fetch("https://api.spotify.com/v1/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const userData = await userResponse.json();
 
-      const playlistsResponse = await fetch(
-        `https://api.spotify.com/v1/users/${userData.id}/playlists`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await playlistsResponse.json();
-      const userOwnedPlaylists = data.items.filter(
-        (playlist: { owner: { id: any } }) => playlist.owner.id === userData.id
-      );
+        const playlistsResponse = await fetch(
+          `https://api.spotify.com/v1/users/${userData.id}/playlists`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await playlistsResponse.json();
+        const userOwnedPlaylists = data.items.filter(
+          (playlist: { owner: { id: any } }) =>
+            playlist.owner.id === userData.id
+        );
 
-      sessionStorage.setItem(
-        "cachedPlaylists",
-        JSON.stringify(userOwnedPlaylists)
-      );
-      dispatch({
-        type: actionTypes.SET_PLAYLISTS,
-        payload: userOwnedPlaylists,
-      });
+        sessionStorage.setItem(
+          "cachedPlaylists",
+          JSON.stringify(userOwnedPlaylists)
+        );
+        dispatch({
+          type: actionTypes.SET_PLAYLISTS,
+          payload: userOwnedPlaylists,
+        });
+      } catch (error) {
+        console.error("Failed to fetch playlists", error);
+      }
     };
 
     fetchPlaylists();
@@ -209,31 +218,36 @@ const PlaylistsPage: React.FC = () => {
     let offset = 0;
     const limit = 100;
 
-    while (true) {
-      const response = await fetch(
-        `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await response.json();
+    try {
+      while (true) {
+        const response = await fetch(
+          `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await response.json();
 
-      const tracks = data.items.map((item: any) => ({
-        id: item.track.id,
-        name: item.track.name,
-        artists: item.track.artists.map((artist: any) => ({
-          name: artist.name,
-        })),
-        albumImage: item.track.album.images[0]?.url || "",
-        previewUrl: item.track.preview_url || "",
-      }));
+        const tracks = data.items.map((item: any) => ({
+          id: item.track.id,
+          name: item.track.name,
+          artists: item.track.artists.map((artist: any) => ({
+            name: artist.name,
+          })),
+          albumImage: item.track.album.images[0]?.url || "",
+          previewUrl: item.track.preview_url || "",
+        }));
 
-      allTracks = [...allTracks, ...tracks];
+        allTracks = [...allTracks, ...tracks];
 
-      if (data.items.length < limit) break;
-      offset += limit;
+        if (data.items.length < limit) break;
+        offset += limit;
+      }
+    } catch (error) {
+      console.error("Failed to fetch tracks", error);
     }
 
     return allTracks;
   };
+
   useEffect(() => {
     const fetchTracks = async (playlistId: string) => {
       const cachedTracks = sessionStorage.getItem(`cachedTracks_${playlistId}`);
@@ -242,6 +256,7 @@ const PlaylistsPage: React.FC = () => {
           type: actionTypes.SET_TRACKS,
           payload: { id: playlistId, tracks: JSON.parse(cachedTracks) },
         });
+        return;
       }
 
       const tracks = await fetchAllTracks(playlistId);
@@ -257,8 +272,6 @@ const PlaylistsPage: React.FC = () => {
 
     state.selectedPlaylists.forEach((playlist) => {
       if (!state.playlistTracks[playlist.id]) {
-        fetchTracks(playlist.id);
-      } else {
         fetchTracks(playlist.id);
       }
     });
@@ -277,13 +290,12 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const allTracks = useMemo(() => {
-    const allTracksFlattened = uniqBy(
+    return uniqBy(
       state.selectedPlaylists.flatMap(
         (playlist) => state.playlistTracks[playlist.id] || []
       ),
       (track: Track) => track.id
     );
-    return allTracksFlattened;
   }, [state.selectedPlaylists, state.playlistTracks]);
 
   const handlePlaylistToggle = useCallback((playlist: Playlist): void => {
@@ -348,34 +360,42 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const handleRenamePlaylist = async (playlistId: string, newName: string) => {
-    await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: newName }),
-    });
-    dispatch({
-      type: actionTypes.SET_PLAYLISTS,
-      payload: state.playlists.map((playlist) =>
-        playlist.id === playlistId ? { ...playlist, name: newName } : playlist
-      ),
-    });
+    try {
+      await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+      dispatch({
+        type: actionTypes.SET_PLAYLISTS,
+        payload: state.playlists.map((playlist) =>
+          playlist.id === playlistId ? { ...playlist, name: newName } : playlist
+        ),
+      });
+    } catch (error) {
+      console.error("Failed to rename playlist", error);
+    }
   };
 
   const handleDeletePlaylist = async (playlistId: string) => {
-    await fetch(
-      `https://api.spotify.com/v1/playlists/${playlistId}/followers`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    dispatch({
-      type: actionTypes.DELETE_PLAYLIST,
-      payload: playlistId,
-    });
+    try {
+      await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/followers`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      dispatch({
+        type: actionTypes.DELETE_PLAYLIST,
+        payload: playlistId,
+      });
+    } catch (error) {
+      console.error("Failed to delete playlist", error);
+    }
   };
 
   const filteredTracks = useMemo(
@@ -404,18 +424,22 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const addTrackToPlaylist = async (playlistId: string, trackUri: string) => {
-    const response = await fetch(
-      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ uris: [trackUri] }),
-      }
-    );
-    return response.json();
+    try {
+      const response = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ uris: [trackUri] }),
+        }
+      );
+      return response.json();
+    } catch (error) {
+      console.error("Failed to add track to playlist", error);
+    }
   };
 
   const moreThanXPlaylistsSelected = state.selectedPlaylists.length > 8;
@@ -424,18 +448,22 @@ const PlaylistsPage: React.FC = () => {
     playlistId: string,
     trackUri: string
   ) => {
-    const response = await fetch(
-      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ tracks: [{ uri: trackUri }] }),
-      }
-    );
-    return response.json();
+    try {
+      const response = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ tracks: [{ uri: trackUri }] }),
+        }
+      );
+      return response.json();
+    } catch (error) {
+      console.error("Failed to remove track from playlist", error);
+    }
   };
 
   useEffect(() => {
@@ -482,7 +510,7 @@ const PlaylistsPage: React.FC = () => {
         <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
-            <div className="pt-3 w-full ">
+            <div className="pt-3 w-full">
               <Input
                 type="text"
                 placeholder="Search for a song or artist in your playlist"
@@ -493,7 +521,7 @@ const PlaylistsPage: React.FC = () => {
             </div>
           </CardHeader>
           <div className="w-full h-full flex flex-col overflow-auto">
-            <div className="pl-3  sticky top-0 z-10 bg-background">
+            <div className="pl-3 sticky top-0 z-10 bg-background">
               <div className="w-full flex">
                 <div
                   className="flex flex-col"
