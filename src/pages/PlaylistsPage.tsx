@@ -15,7 +15,7 @@ import TopNav from "@/components/nav/TopNav";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { uniqBy } from "lodash";
-import { Plus, Check, ArrowUp, ArrowDownUp } from "lucide-react";
+import { Plus, Check, ArrowUp, ArrowDownUp, ArrowDown } from "lucide-react";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
@@ -134,17 +134,35 @@ const PlaylistsPage: React.FC = () => {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [columnWidths, setColumnWidths] = useState<{
-    song: number;
-    artist: number;
-    playlists: { [key: string]: number };
-  }>({ song: 150, artist: 150, playlists: {} });
+    song: string;
+    artist: string;
+    playlists: { [key: string]: string };
+  }>({
+    song: "20rem",
+    artist: "14rem",
+    playlists: {},
+  });
 
   const songRefs = useRef<(HTMLDivElement | null)[]>([]);
   const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
   const playlistRefs = useRef<{ [key: string]: (HTMLDivElement | null)[] }>({});
 
   useErrorHandling(setShowErrorPopup);
+  useEffect(() => {
+    setColumnWidths((prevColumnWidths) => {
+      const newPlaylistsWidths = { ...prevColumnWidths.playlists };
+      state.selectedPlaylists.forEach((playlist) => {
+        if (!newPlaylistsWidths[playlist.id]) {
+          newPlaylistsWidths[playlist.id] = "3.5rem";
+        }
+      });
 
+      return {
+        ...prevColumnWidths,
+        playlists: newPlaylistsWidths,
+      };
+    });
+  }, [state.selectedPlaylists]);
   useEffect(() => {
     const fetchPlaylists = async () => {
       if (!token) {
@@ -241,7 +259,7 @@ const PlaylistsPage: React.FC = () => {
       if (!state.playlistTracks[playlist.id]) {
         fetchTracks(playlist.id);
       } else {
-        fetchTracks(playlist.id); // Ensure tracks are always updated
+        fetchTracks(playlist.id);
       }
     });
   }, [state.selectedPlaylists, token]);
@@ -433,45 +451,6 @@ const PlaylistsPage: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  const measureTextWidth = (
-    text: string,
-    font: string = "20px Arial"
-  ): number => {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (context) {
-      context.font = font;
-      return context.measureText(text).width;
-    }
-    return 0;
-  };
-
-  useEffect(() => {
-    const measureColumnWidths = () => {
-      const songWidths = filteredAndSearchedTracks.map((track) =>
-        measureTextWidth(truncateText(track.name, 23))
-      );
-      const artistWidths = filteredAndSearchedTracks.map((track) =>
-        measureTextWidth(
-          truncateText(
-            track.artists.map((artist) => artist.name).join(", "),
-            23
-          )
-        )
-      );
-
-      const maxSongWidth = Math.max(...songWidths, 150);
-      const maxArtistWidth = Math.max(...artistWidths, 150);
-      setColumnWidths((prevColumnWidths) => ({
-        ...prevColumnWidths,
-        song: maxSongWidth + 50,
-        artist: maxArtistWidth + 5,
-      }));
-    };
-
-    measureColumnWidths();
-  }, [state.selectedPlaylists, filteredAndSearchedTracks]);
-
   return (
     <div className="w-screen h-screen overflow-hidden bg-background grid auto-rows-12">
       {showErrorPopup && (
@@ -503,7 +482,7 @@ const PlaylistsPage: React.FC = () => {
         <Card className="flex flex-col w-full h-full overflow-hidden">
           <CardHeader>
             <div>Edit Playlists</div>
-            <div className="py-3 w-4/5 ">
+            <div className="pt-3 w-full ">
               <Input
                 type="text"
                 placeholder="Search for a song or artist in your playlist"
@@ -514,11 +493,11 @@ const PlaylistsPage: React.FC = () => {
             </div>
           </CardHeader>
           <div className="w-full h-full flex flex-col overflow-auto">
-            <div className="sticky top-0 z-10 bg-background">
+            <div className="pl-3  sticky top-0 z-10 bg-background">
               <div className="w-full flex">
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.song}px` }}
+                  style={{ minWidth: `${columnWidths.song}` }}
                 >
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
@@ -529,7 +508,7 @@ const PlaylistsPage: React.FC = () => {
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
                       ) : (
-                        <ArrowDownUp className="ml-1 w-4 h-4" />
+                        <ArrowDown className="ml-1 w-4 h-4" />
                       )
                     ) : (
                       <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
@@ -538,7 +517,7 @@ const PlaylistsPage: React.FC = () => {
                 </div>
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.artist}px` }}
+                  style={{ minWidth: `${columnWidths.artist}` }}
                 >
                   <h2
                     className="font-bold h-14 cursor-pointer flex flex-row items-center justify-center"
@@ -549,7 +528,7 @@ const PlaylistsPage: React.FC = () => {
                       sortConfig.direction === "ascending" ? (
                         <ArrowUp className="ml-1 w-4 h-4" />
                       ) : (
-                        <ArrowDownUp className="ml-1 w-4 h-4" />
+                        <ArrowDown className="ml-1 w-4 h-4" />
                       )
                     ) : (
                       <ArrowDownUp className="ml-1 w-4 h-4 text-muted-foreground" />
@@ -561,11 +540,11 @@ const PlaylistsPage: React.FC = () => {
                     key={playlist.id}
                     className="flex flex-col"
                     style={{
-                      width: `${columnWidths.playlists[playlist.id]}px`,
+                      minWidth: `${columnWidths.playlists[playlist.id]}`,
                     }}
                   >
                     <div
-                      className="h-14 w-20 cursor-pointer flex flex-row items-center justify-center"
+                      className="h-14 w-14 cursor-pointer flex flex-row items-center justify-center"
                       onClick={() => handleSort(playlist.id)}
                     >
                       <CustomTooltip
@@ -576,21 +555,16 @@ const PlaylistsPage: React.FC = () => {
                               "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
                             }
                             alt={`${playlist?.name || "Playlist"} cover`}
-                            className="w-10 h-10 rounded-md"
+                            className={`w-10 h-10 rounded-md ${
+                              sortConfig.key === playlist.id
+                                ? "outline outline-3 outline-accent drop-shadow-3d"
+                                : "drop-shadow-3d"
+                            }`}
                           />
                         }
                         description={playlist.name}
                         time={200}
                       />
-                      {sortConfig.key === playlist.id ? (
-                        sortConfig.direction === "ascending" ? (
-                          <ArrowUp className="ml-1 w-4 h-4" />
-                        ) : (
-                          <ArrowUp className="ml-1 w-4 h-4" />
-                        )
-                      ) : (
-                        <ArrowUp className="ml-1 w-4 h-4 text-muted-foreground" />
-                      )}
                     </div>
                   </div>
                 ))}
@@ -600,7 +574,7 @@ const PlaylistsPage: React.FC = () => {
               <CardContent className="w-full flex p-3">
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.song}px` }}
+                  style={{ minWidth: `${columnWidths.song}` }}
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
@@ -628,7 +602,7 @@ const PlaylistsPage: React.FC = () => {
                 </div>
                 <div
                   className="flex flex-col"
-                  style={{ width: `${columnWidths.artist}px` }}
+                  style={{ minWidth: `${columnWidths.artist}` }}
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
@@ -653,9 +627,9 @@ const PlaylistsPage: React.FC = () => {
                 {state.selectedPlaylists.map((playlist: Playlist) => (
                   <div
                     key={playlist.id}
-                    className="flex flex-col "
+                    className="flex flex-col"
                     style={{
-                      width: `${columnWidths.playlists[playlist.id]}px`,
+                      minWidth: `${columnWidths.playlists[playlist.id]}`,
                     }}
                   >
                     <div className="flex flex-col gap-6">
@@ -703,7 +677,7 @@ const PlaylistsPage: React.FC = () => {
                                 }
                               }}
                               key={track.id}
-                              className=" ml-[0.72rem] h-14 w-[4.2rem] flex justify-start items-center"
+                              className=" h-14 w-14 flex justify-center items-center"
                             >
                               <button onClick={handleToggleTrack} className="">
                                 {isInPlaylist ? (
