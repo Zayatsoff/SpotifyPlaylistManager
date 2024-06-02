@@ -33,6 +33,7 @@
 - [ ] Bug: `PlaylistPage` lags when there are too many tracks/playlists, need to only load tracks based on scrolling.
 - [ ] Bug: Add loading when loading
 - [ ] Add feature: Combine playlists
+- [ ] Add feature: Undo button
 - [ ] Add feature: Optional pagination
 - [ ] Add feature: Add new songs to list
 - [ ] Add feature: Duplicate button
