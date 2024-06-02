@@ -4,7 +4,6 @@ import { default as Github } from "@/assets/github_logo.svg?react";
 import ThemeToggler from "@/components/ui/ThemeToggler";
 import { Settings, History } from "lucide-react";
 import CustomTooltip from "../ui/CustomTooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Popover,
   PopoverContent,
