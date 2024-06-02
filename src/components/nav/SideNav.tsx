@@ -62,6 +62,9 @@ const SideNav: React.FC<SideNavProps> = ({
     (playlist) => playlist.owner.id !== currentUserId
   );
 
+  console.log("Owned Playlists:", ownedPlaylists);
+  console.log("Other Playlists:", otherPlaylists);
+
   const maxPlaylistsSelected = selectedPlaylists.length >= 9;
 
   const handleDeleteClick = (e: React.MouseEvent, playlistId: string) => {
@@ -119,7 +122,10 @@ const SideNav: React.FC<SideNavProps> = ({
     <Card className="w-80 h-full bg-card overflow-hidden">
       <Tabs
         value={tabValue}
-        onValueChange={setTabValue}
+        onValueChange={(val) => {
+          console.log("Tab changed to:", val); // Log tab changes
+          setTabValue(val);
+        }}
         className="w-full h-full"
       >
         <TabsList>
@@ -127,8 +133,8 @@ const SideNav: React.FC<SideNavProps> = ({
           <TabsTrigger value="others">Other</TabsTrigger>
           <TabsTrigger value="recommended">Recommended </TabsTrigger>
         </TabsList>
-        <ScrollArea className="w-full h-full">
-          <TabsContent value="owned" className="w-full h-full">
+        <TabsContent value="owned" className="w-full h-full">
+          <ScrollArea className="w-full h-full">
             <CardHeader>Owned Playlists</CardHeader>
             <CardContent>
               <ul>
@@ -273,8 +279,8 @@ const SideNav: React.FC<SideNavProps> = ({
                 })}
               </ul>
             </CardContent>
-          </TabsContent>
-        </ScrollArea>
+          </ScrollArea>
+        </TabsContent>
         <ScrollArea className="w-full h-full">
           <TabsContent value="others" className="w-full h-full">
             <CardHeader>Other Playlists</CardHeader>
@@ -334,6 +340,7 @@ const SideNav: React.FC<SideNavProps> = ({
             </CardContent>
           </TabsContent>
         </ScrollArea>
+
         <ScrollArea className="w-full h-full">
           <TabsContent value="recommended" className="w-full h-full">
             <CardHeader>Recommended Playlists</CardHeader>

@@ -2,9 +2,9 @@ import React, {
   useEffect,
   useReducer,
   useState,
-  useRef,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import TrackComponent from "@/components/playlists/TrackComponent";
@@ -41,6 +41,7 @@ const actionTypes = {
   ADD_TRACK_TO_PLAYLIST: "ADD_TRACK_TO_PLAYLIST",
   REMOVE_TRACK_FROM_PLAYLIST: "REMOVE_TRACK_FROM_PLAYLIST",
   DELETE_PLAYLIST: "DELETE_PLAYLIST",
+  RENAME_PLAYLIST: "RENAME_PLAYLIST",
 };
 
 const initialState = {
@@ -111,7 +112,15 @@ const reducer = (state: State, action: Action) => {
           return acc;
         }, {} as Record<string, Track[]>),
       };
-
+    case actionTypes.RENAME_PLAYLIST:
+      return {
+        ...state,
+        playlists: state.playlists.map((p) =>
+          p.id === action.payload.id
+            ? { ...p, name: action.payload.newName }
+            : p
+        ),
+      };
     default:
       return state;
   }
@@ -137,58 +146,56 @@ const PlaylistsPage: React.FC = () => {
     artist: "14rem",
     playlists: {},
   });
-
-  const songRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const playlistRefs = useRef<{ [key: string]: (HTMLDivElement | null)[] }>({});
+  const [history, setHistory] = useState<string[]>([]);
 
   useErrorHandling(setShowErrorPopup);
 
-  useEffect(() => {
-    const fetchPlaylists = async () => {
-      if (!token) return;
+  const addToHistory = (action: string) => {
+    setHistory((prevHistory) => [action, ...prevHistory]);
+  };
 
-      const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
-      if (cachedPlaylists) {
-        dispatch({
-          type: actionTypes.SET_PLAYLISTS,
-          payload: JSON.parse(cachedPlaylists),
+  const fetchPlaylists = async () => {
+    if (!token) return;
+
+    const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
+    if (cachedPlaylists) {
+      dispatch({
+        type: actionTypes.SET_PLAYLISTS,
+        payload: JSON.parse(cachedPlaylists),
+      });
+      return;
+    }
+
+    let allPlaylists: any[] = [];
+    let url = `https://api.spotify.com/v1/me/playlists`;
+    let next = true;
+
+    try {
+      while (next) {
+        const playlistsResponse = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        return;
-      }
-
-      let allPlaylists: any[] = [];
-      let url = `https://api.spotify.com/v1/me/playlists`;
-      let next = true;
-
-      try {
-        while (next) {
-          const playlistsResponse = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await playlistsResponse.json();
-          allPlaylists = [...allPlaylists, ...data.items];
-          // Check if there is a next page
-          if (data.next) {
-            url = data.next;
-          } else {
-            next = false;
-
-            console.log("Fetched playlists:", allPlaylists); // Log fetched playlists for debugging
-          }
+        const data = await playlistsResponse.json();
+        allPlaylists = [...allPlaylists, ...data.items];
+        if (data.next) {
+          url = data.next;
+        } else {
+          next = false;
         }
-
-        sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
-
-        dispatch({
-          type: actionTypes.SET_PLAYLISTS,
-          payload: allPlaylists,
-        });
-      } catch (error) {
-        console.error("Failed to fetch playlists", error);
       }
-    };
 
+      sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
+
+      dispatch({
+        type: actionTypes.SET_PLAYLISTS,
+        payload: allPlaylists,
+      });
+    } catch (error) {
+      console.error("Failed to fetch playlists", error);
+    }
+  };
+
+  useEffect(() => {
     fetchPlaylists();
   }, [token]);
 
@@ -349,11 +356,10 @@ const PlaylistsPage: React.FC = () => {
         body: JSON.stringify({ name: newName }),
       });
       dispatch({
-        type: actionTypes.SET_PLAYLISTS,
-        payload: state.playlists.map((playlist) =>
-          playlist.id === playlistId ? { ...playlist, name: newName } : playlist
-        ),
+        type: actionTypes.RENAME_PLAYLIST,
+        payload: { id: playlistId, newName },
       });
+      addToHistory(`Renamed playlist with ID ${playlistId} to "${newName}"`);
     } catch (error) {
       console.error("Failed to rename playlist", error);
     }
@@ -372,6 +378,7 @@ const PlaylistsPage: React.FC = () => {
         type: actionTypes.DELETE_PLAYLIST,
         payload: playlistId,
       });
+      addToHistory(`Deleted playlist with ID ${playlistId}`);
     } catch (error) {
       console.error("Failed to delete playlist", error);
     }
@@ -445,6 +452,9 @@ const PlaylistsPage: React.FC = () => {
     }
   };
 
+  const songRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const artistRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   useEffect(() => {
     songRefs.current = [];
     artistRefs.current = [];
@@ -476,7 +486,7 @@ const PlaylistsPage: React.FC = () => {
         </Dialog>
       )}
       <div className="w-full h-full flex-1">
-        <TopNav />
+        <TopNav history={history} />
       </div>
       <div className="w-full h-full grid grid-cols-[auto,1fr] gap-3 p-3 pt-0 overflow-hidden">
         {userId && (
@@ -588,13 +598,8 @@ const PlaylistsPage: React.FC = () => {
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
-                      (track: Track, index: number) => (
-                        <div
-                          ref={(el) => {
-                            if (el) songRefs.current[index] = el;
-                          }}
-                          key={track.id}
-                        >
+                      (track: Track, _: number) => (
+                        <div key={track.id}>
                           <TrackComponent
                             track={track}
                             moreThanXPlaylistsSelected={
@@ -616,13 +621,8 @@ const PlaylistsPage: React.FC = () => {
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
-                      (track: Track, index: number) => (
-                        <div
-                          ref={(el) => {
-                            if (el) artistRefs.current[index] = el;
-                          }}
-                          key={track.id}
-                        >
+                      (track: Track, _: number) => (
+                        <div key={track.id}>
                           <ArtistComponent
                             track={track}
                             moreThanXPlaylistsSelected={
@@ -644,7 +644,7 @@ const PlaylistsPage: React.FC = () => {
                   >
                     <div className="flex flex-col gap-6">
                       {filteredAndSearchedTracks.map(
-                        (track: Track, index: number) => {
+                        (track: Track, _: number) => {
                           const isInPlaylist = state.playlistTracks[
                             playlist.id
                           ]?.some((pTrack) => pTrack.id === track.id);
@@ -661,6 +661,9 @@ const PlaylistsPage: React.FC = () => {
                                     trackId: track.id,
                                   },
                                 });
+                                addToHistory(
+                                  `Removed track "${track.name}" from playlist "${playlist.name}"`
+                                );
                               });
                             } else {
                               addTrackToPlaylist(
@@ -674,18 +677,14 @@ const PlaylistsPage: React.FC = () => {
                                     track: track,
                                   },
                                 });
+                                addToHistory(
+                                  `Added track "${track.name}" to playlist "${playlist.name}"`
+                                );
                               });
                             }
                           };
                           return (
                             <div
-                              ref={(el) => {
-                                if (el) {
-                                  if (!playlistRefs.current[playlist.id])
-                                    playlistRefs.current[playlist.id] = [];
-                                  playlistRefs.current[playlist.id][index] = el;
-                                }
-                              }}
                               key={track.id}
                               className="h-14 w-14 flex justify-center items-center"
                             >
