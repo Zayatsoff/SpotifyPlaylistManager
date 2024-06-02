@@ -598,7 +598,7 @@ const PlaylistsPage: React.FC = () => {
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
-                      (track: Track, index: number) => (
+                      (track: Track, _: number) => (
                         <div key={track.id}>
                           <TrackComponent
                             track={track}
@@ -621,7 +621,7 @@ const PlaylistsPage: React.FC = () => {
                 >
                   <div className="flex flex-col gap-6">
                     {filteredAndSearchedTracks.map(
-                      (track: Track, index: number) => (
+                      (track: Track, _: number) => (
                         <div key={track.id}>
                           <ArtistComponent
                             track={track}
@@ -644,7 +644,7 @@ const PlaylistsPage: React.FC = () => {
                   >
                     <div className="flex flex-col gap-6">
                       {filteredAndSearchedTracks.map(
-                        (track: Track, index: number) => {
+                        (track: Track, _: number) => {
                           const isInPlaylist = state.playlistTracks[
                             playlist.id
                           ]?.some((pTrack) => pTrack.id === track.id);
