@@ -1,21 +1,20 @@
 import React from "react";
 import { Artist, Track } from "../../interfaces/PlaylistInterfaces";
-import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 
 interface ArtistComponentProps {
   track: Track;
-  moreThanXPlaylistsSelected: boolean;
+  density?: "comfortable" | "compact";
 }
 
-const ArtistComponent: React.FC<ArtistComponentProps> = ({ track }) => {
+const ArtistComponent: React.FC<ArtistComponentProps> = ({ track, density = "comfortable" }) => {
   const artistNames = track.artists
     .map((artist: Artist) => artist.name)
     .join(", ");
   return (
-    <div key={track.id} className="text-base h-14 flex items-center">
+    <div key={track.id} className={"text-xs text-muted-foreground flex items-center " + (density === "compact" ? "h-[52px]" : "h-[64px]") }>
       <CustomTooltip
-        children={<div>{truncateText(artistNames, 20)}</div>}
+        children={<div className="truncate max-w-[12rem]" title={artistNames}>{artistNames}</div>}
         description={artistNames}
         time={300}
       />

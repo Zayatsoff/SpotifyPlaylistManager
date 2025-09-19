@@ -21,6 +21,20 @@ function CallbackPage() {
     );
 
     if (queryParams.access_token) {
+      // Validate state parameter
+      const stateKey = "spotify_auth_state";
+      const expectedState = localStorage.getItem(stateKey);
+      if (expectedState && queryParams.state && expectedState !== queryParams.state) {
+        console.error("Authorization error: state mismatch");
+        return;
+      }
+
+      // Persist token expiry for later checks
+      if (queryParams.expires_in) {
+        const expiresAt = Date.now() + parseInt(queryParams.expires_in, 10) * 1000;
+        localStorage.setItem("spotifyTokenExpiresAt", String(expiresAt));
+      }
+
       // Save the access token
       setToken(queryParams.access_token);
 

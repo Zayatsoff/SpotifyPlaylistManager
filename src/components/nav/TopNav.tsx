@@ -2,71 +2,100 @@ import React from "react";
 import { default as Logo } from "@/assets/spm_quick_logo_colour.svg?react";
 import { default as Github } from "@/assets/github_logo.svg?react";
 import ThemeToggler from "@/components/ui/ThemeToggler";
-import { Settings, History } from "lucide-react";
+import { Search, History, PanelLeft } from "lucide-react";
 import CustomTooltip from "../ui/CustomTooltip";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 
 interface TopNavProps {
   history: string[];
+  onOpenCommand?: () => void;
+  onToggleRail?: () => void;
 }
 
-const TopNav: React.FC<TopNavProps> = ({ history }) => {
+const TopNav: React.FC<TopNavProps> = ({ history, onOpenCommand, onToggleRail }) => {
   return (
-    <div className="w-full h-30 p-4 flex flex-row justify-between items-center">
-      <div className="w-96">
-        <Logo className="text-foreground w-full drop-shadow-[0_2px_5px_rgba(0,0,0,0.05)]" />
-      </div>
-      <div className="flex flex-row gap-3 items-center">
-        <div className="h-5 flex items-center">
-          <CustomTooltip
-            children={
-              <a
-                href="https://github.com/Zayatsoff/SpotifyPlaylistManager"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground rounded-full hover:bg-accent/30 w-8 h-8 flex items-center justify-center transition-all ease-out"
-              >
-                <Github className="w-5" />
-              </a>
-            }
-            description={"Github"}
-            time={400}
-          />
+    <div className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b">
+      <div className="h-14 flex flex-row justify-between items-center px-2 md:px-3">
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onToggleRail}
+            aria-label="Toggle sidebar"
+          >
+            <PanelLeft className="w-5 h-5" />
+          </Button>
+          <Logo className="text-foreground h-8 w-auto" />
         </div>
-        <div className="h-5 flex items-center">
-          <CustomTooltip
-            children={
-              <div className=" text-foreground rounded-full hover:bg-accent/30 w-8 h-8 flex items-center justify-center transition-all ease-out">
-                <Settings className="w-5" />
+        <div className="flex flex-row gap-1.5 items-center">
+          <div className="h-5 flex items-center">
+            <CustomTooltip
+              children={
+                <Button asChild variant="ghost" size="icon" aria-label="Open GitHub repository">
+                  <a
+                    href="https://github.com/Zayatsoff/SpotifyPlaylistManager"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Github className="w-5 h-5 text-foreground" />
+                  </a>
+                </Button>
+              }
+              description={"Github"}
+              time={400}
+            />
+          </div>
+          <div className="h-5 flex items-center">
+            <CustomTooltip
+              children={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    if (onOpenCommand) onOpenCommand();
+                    else {
+                      const searchInput = document.querySelector<HTMLInputElement>("input[aria-label='Search']");
+                      searchInput?.focus();
+                    }
+                  }}
+                  aria-label="Open command palette (Cmd/Ctrl+K)"
+                >
+                  <Search className="w-5 h-5 text-foreground" />
+                </Button>
+              }
+              description={
+                <span className="inline-flex items-center gap-1">
+                  Command palette <kbd className="ml-1 rounded border border-border/60 bg-muted/20 px-1.5 py-0.5 text-[10px]">Cmd/Ctrl+K</kbd>
+                </span>
+              }
+              time={400}
+            />
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open history">
+                <History className="w-5 h-5 text-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="max-w-md max-h-80 overflow-auto">
+              <div className="p-3 w-full h-full">
+                <div className="font-semibold text-base">History</div>
+                <ul className="list-disc pl-5 text-sm">
+                  {history.map((item: string, index: number) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
               </div>
-            }
-            description={"Settings"}
-            time={400}
-          />
+            </PopoverContent>
+          </Popover>
+          <ThemeToggler />
         </div>
-        <Popover>
-          <PopoverTrigger>
-            <div className=" text-foreground rounded-full hover:bg-accent/30 w-8 h-8 flex items-center justify-center transition-all ease-out">
-              <History className="w-5" />
-            </div>
-          </PopoverTrigger>
-          <PopoverContent className="max-w-md max-h-96 overflow-auto">
-            <div className="p-4 w-full h-full sticky">
-              <div className="font-bold text-lg">History</div>
-
-              <ul className="list-disc pl-5">
-                {history.map((item: string, index: number) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <ThemeToggler />
       </div>
     </div>
   );

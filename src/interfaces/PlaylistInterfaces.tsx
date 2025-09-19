@@ -11,6 +11,7 @@ export interface Playlist {
   name: string;
   images: { url: string }[];
   owner: { id: string };
+  tracks?: { total: number };
 }
 
 export interface Artist {

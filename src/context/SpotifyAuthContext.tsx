@@ -51,6 +51,15 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
       }
     }
 
+    // Clear expired token if present
+    const expiresAtRaw = localStorage.getItem("spotifyTokenExpiresAt");
+    const isExpired = expiresAtRaw ? Date.now() > parseInt(expiresAtRaw, 10) : false;
+    if (isExpired) {
+      localStorage.removeItem("spotifyToken");
+      localStorage.removeItem("spotifyTokenExpiresAt");
+      token = null;
+    }
+
     setTokenState(token);
 
     const storedToken = localStorage.getItem("spotifyToken");
@@ -67,6 +76,7 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   const setToken = (token: string | null) => {
     if (token === null) {
       localStorage.removeItem("spotifyToken"); // Clear token from storage on logout or invalidation
+      localStorage.removeItem("spotifyTokenExpiresAt");
       sessionStorage.clear(); // Clear session storage on logout
       setUserId(null); // Clear userId on logout
     } else {

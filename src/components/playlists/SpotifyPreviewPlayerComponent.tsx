@@ -23,15 +23,26 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
     if (audioRef.current) {
       const audioElement = audioRef.current;
 
+      // Only update the source if the track has changed
       if (currentTrackRef.current !== track) {
         audioElement.pause();
-        audioElement.src = track.previewUrl;
-        audioElement.load(); // Ensure the new source is loaded
+
+        // Check if the preview URL exists and is non-empty
+        if (track.previewUrl && track.previewUrl.trim() !== "") {
+          console.log("Preview URL:", track.previewUrl);
+          audioElement.src = track.previewUrl;
+          audioElement.load(); // Ensure the new source is loaded
+        } else {
+          console.warn("No preview URL available for track", track.name);
+          // Remove the src attribute so the audio element won't try to load an invalid resource
+          audioElement.removeAttribute("src");
+        }
+
         currentTrackRef.current = track;
       }
 
       const handleCanPlayThrough = () => {
-        if (isPlaying) {
+        if (isPlaying && track.previewUrl && track.previewUrl.trim() !== "") {
           const playPromise = audioElement.play();
           if (playPromise !== undefined) {
             playPromise.catch((e) => {
@@ -42,12 +53,18 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
       };
 
       audioElement.addEventListener("canplaythrough", handleCanPlayThrough);
+      const handleEnded = () => {
+        setProgress(0);
+        onPlayPreview(track); // toggles play state off in parent
+      };
+      audioElement.addEventListener("ended", handleEnded);
 
       return () => {
         audioElement.removeEventListener(
           "canplaythrough",
           handleCanPlayThrough
         );
+        audioElement.removeEventListener("ended", handleEnded);
       };
     }
   }, [track, isPlaying]);
@@ -55,8 +72,7 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
   useEffect(() => {
     if (audioRef.current) {
       const audioElement = audioRef.current;
-
-      if (isPlaying) {
+      if (isPlaying && track.previewUrl && track.previewUrl.trim() !== "") {
         const playPromise = audioElement.play();
         if (playPromise !== undefined) {
           playPromise.catch((e) => {
@@ -67,7 +83,7 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
         audioElement.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, track]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -82,7 +98,6 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
       };
 
       const interval = setInterval(handleTimeUpdate, 50); // Update progress every 50ms
-
       audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
 
       return () => {
@@ -149,7 +164,7 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
   }, [isDragging]);
 
   return (
-    <div className="flex items-center px-3 pb-3 ">
+    <div className="flex items-center px-3 pb-3 sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-t border-border/50">
       <div className="flex items-center w-96">
         <img
           src={track.albumImage || ""}
@@ -173,12 +188,12 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
             </div>
           ) : (
             <div className="w-8 h-8 text-accent fill-accent hover:text-muted hover:fill-muted rounded-full flex items-center justify-center mr-3 transition-all ease-out">
-              <Play fill="" className="w-5 h-5  " />
+              <Play fill="" className="w-5 h-5 " />
             </div>
           )}
         </button>
         <div
-          className=" w-full flex-1 h-1 bg-muted rounded relative mr-6"
+          className="w-full flex-1 h-1 bg-muted rounded relative mr-6"
           onClick={handleProgressClick}
           ref={progressBarRef}
         >
@@ -188,13 +203,13 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
           >
             <div
               className={`absolute right-[-4px] top-1/2 transform -translate-y-1/2 bg-accent rounded-full transition-all ease-in-out h-4 w-4 hover:w-5 hover:h-5 hover:right-[-5px]${
-                isDragging ? "w-5 h-5 right-[-5px]" : ""
+                isDragging ? " w-5 h-5 right-[-5px]" : ""
               }`}
               onMouseDown={handleMouseDown}
             />
           </div>
         </div>
-        <audio ref={audioRef} />
+        <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
       </div>
     </div>
   );

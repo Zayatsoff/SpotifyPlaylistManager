@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { truncateText } from "@/utils/textHelpers";
 import CustomTooltip from "@/components/ui/CustomTooltip";
-import { Trash2, Edit3 } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,8 @@ interface SideNavProps {
   onDeletePlaylist: (playlistId: string) => void;
   onRenamePlaylist: (playlistId: string, newName: string) => void;
   currentUserId: string;
+  onDuplicatePlaylist: (playlist: Playlist) => void;
+  isLoading?: boolean;
 }
 
 const SideNav: React.FC<SideNavProps> = ({
@@ -38,18 +40,16 @@ const SideNav: React.FC<SideNavProps> = ({
   onDeletePlaylist,
   onRenamePlaylist,
   currentUserId,
+  onDuplicatePlaylist,
+  isLoading,
 }) => {
-  const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
   const [playlistToRename, setPlaylistToRename] = useState<string | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState<string>("");
-  const [renamePosition, setRenamePosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const [tabValue, setTabValue] = useState("owned");
+  const [localQuery, setLocalQuery] = useState("");
 
   if (!playlists) {
     return null;
@@ -62,102 +62,140 @@ const SideNav: React.FC<SideNavProps> = ({
     (playlist) => playlist.owner.id !== currentUserId
   );
 
-  console.log("Owned Playlists:", ownedPlaylists);
-  console.log("Other Playlists:", otherPlaylists);
+  const filteredOwned = useMemo(() => {
+    if (!ownedPlaylists) return [] as Playlist[];
+    const q = localQuery.trim().toLowerCase();
+    if (!q) return ownedPlaylists;
+    return ownedPlaylists.filter((p) => p.name.toLowerCase().includes(q));
+  }, [ownedPlaylists, localQuery]);
+
+  const filteredOthers = useMemo(() => {
+    if (!otherPlaylists) return [] as Playlist[];
+    const q = localQuery.trim().toLowerCase();
+    if (!q) return otherPlaylists;
+    return otherPlaylists.filter((p) => p.name.toLowerCase().includes(q));
+  }, [otherPlaylists, localQuery]);
 
   const maxPlaylistsSelected = selectedPlaylists.length >= 9;
 
   const handleDeleteClick = (e: React.MouseEvent, playlistId: string) => {
     e.stopPropagation();
     setPlaylistToDelete(playlistId);
-    setIsDialogOpen(true);
+    setIsDeleteDialogOpen(true);
   };
 
-  const handleRenameClick = (
-    e: React.MouseEvent,
-    playlistId: string,
-    playlistName: string
-  ) => {
+  const openRenameDialog = (e: React.MouseEvent, playlistId: string, playlistName: string) => {
     e.stopPropagation();
     setPlaylistToRename(playlistId);
     setNewPlaylistName(playlistName);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const newPosition = { top: rect.top + rect.height, left: rect.left };
-    setRenamePosition(newPosition);
-    setPopoverOpen(true);
+    setIsRenameDialogOpen(true);
   };
 
   const handleRenameSave = () => {
     if (playlistToRename && newPlaylistName) {
       onRenamePlaylist(playlistToRename, newPlaylistName);
       setPlaylistToRename(null);
-      setPopoverOpen(false);
+      setIsRenameDialogOpen(false);
     }
   };
 
   const handleCancelRename = () => {
     setPlaylistToRename(null);
     setNewPlaylistName("");
-    setPopoverOpen(false);
+    setIsRenameDialogOpen(false);
   };
 
   const handleConfirmDelete = () => {
     if (playlistToDelete) {
       onDeletePlaylist(playlistToDelete);
       setPlaylistToDelete(null);
-      setIsDialogOpen(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
   const handleCancelDelete = () => {
     setPlaylistToDelete(null);
-    setIsDialogOpen(false);
+    setIsDeleteDialogOpen(false);
   };
 
-  const handlePopoverOpenChange = (isOpen: boolean) => {
-    setPopoverOpen(isOpen);
-  };
+  
 
   return (
-    <Card className="w-80 h-full bg-card overflow-hidden">
+    <Card className="w-72 h-full bg-card overflow-hidden border-r border-border/50" data-left-rail>
       <Tabs
         value={tabValue}
         onValueChange={(val) => {
-          console.log("Tab changed to:", val); // Log tab changes
           setTabValue(val);
         }}
         className="w-full h-full"
       >
-        <TabsList>
-          <TabsTrigger value="owned">Playlists</TabsTrigger>
-          <TabsTrigger value="others">Other</TabsTrigger>
-          <TabsTrigger value="recommended">Recommended </TabsTrigger>
-        </TabsList>
+        <div className="sticky top-0 z-20 bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-b">
+          <div className="px-2 py-2">
+            <TabsList className="flex-wrap gap-1 h-auto min-h-[2.25rem] p-1 overflow-visible">
+              <TabsTrigger value="owned">Playlists ({ownedPlaylists?.length || 0})</TabsTrigger>
+              <TabsTrigger value="others">Following ({otherPlaylists?.length || 0})</TabsTrigger>
+              <TabsTrigger value="recommended">Recommended</TabsTrigger>
+            </TabsList>
+            <div className="mt-2">
+              <div className="relative">
+                <Input
+                  value={localQuery}
+                  onChange={(e) => setLocalQuery(e.target.value)}
+                  placeholder="Filter playlists"
+                  aria-label="Filter playlists"
+                  className="h-8 pr-6"
+                />
+                {localQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setLocalQuery("")}
+                    aria-label="Clear filter"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
         <TabsContent value="owned" className="w-full h-full">
           <ScrollArea className="w-full h-full">
-            <CardHeader>Owned Playlists</CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
+              {isLoading ? (
+                <RailSkeleton />
+              ) : (
               <ul>
-                {ownedPlaylists?.map((playlist) => {
+                {filteredOwned?.map((playlist) => {
                   const isSelected = selectedPlaylists.some(
                     (selectedPlaylist) => selectedPlaylist.id === playlist.id
                   );
-                  const listItemClass = isSelected
-                    ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-md transition-all ease-out"
-                    : maxPlaylistsSelected
-                    ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
-                    : "rounded-xl flex items-center bg-card mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
-                  const trashClass =
-                    hoveredPlaylist === playlist.id
-                      ? "w-5 h-5  cursor-pointer text-destructive hover:text-foreground transition-all"
-                      : "w-5 h-5 cursor-pointer text-destructive/0";
-                  const editClass =
-                    hoveredPlaylist === playlist.id
-                      ? "w-5 h-5 ml-auto cursor-pointer text-primary hover:text-foreground transition-all"
-                      : "w-5 h-5 ml-auto cursor-pointer text-primary/0";
+                  const listItemClass =
+                    (isSelected
+                      ? "relative bg-accent/15 "
+                      : maxPlaylistsSelected
+                      ? "relative bg-muted/50 "
+                      : "relative bg-card ") +
+                    "group rounded-lg h-12 px-2 flex items-center mb-1 text-sm transition-colors hover:bg-accent/10";
 
                   const handleClick = () => {
-                    if (!isSelected && maxPlaylistsSelected) return;
+                    const cachedKey = `cachedTracks_${playlist.id}`;
+                    const hasCache = Boolean(sessionStorage.getItem(cachedKey));
+                    console.group(
+                      "Playlist click",
+                      `${playlist.name} (${playlist.id})`
+                    );
+                    console.log("selected?", isSelected);
+                    console.log("cache", { key: cachedKey, present: hasCache });
+                    if (!isSelected && maxPlaylistsSelected) {
+                      console.warn(
+                        "Selection blocked: maximum selected playlists reached"
+                      );
+                      console.groupEnd();
+                      return;
+                    }
+                    console.log("Toggling selection");
+                    console.groupEnd();
                     onPlaylistToggle(playlist);
                   };
 
@@ -166,138 +204,117 @@ const SideNav: React.FC<SideNavProps> = ({
                       key={playlist.id}
                       className={listItemClass}
                       onClick={handleClick}
-                      onMouseEnter={() => setHoveredPlaylist(playlist.id)}
-                      onMouseLeave={() => setHoveredPlaylist(null)}
+                      data-playlist-id={playlist.id}
                     >
+                      {isSelected && (
+                        <span className="absolute left-0 top-0 h-full w-1.5 bg-accent rounded-l" aria-hidden="true" />
+                      )}
                       {playlist.images && playlist.images.length > 0 ? (
                         <img
                           src={playlist.images[0].url}
                           alt={`${playlist.name} cover`}
-                          className="w-10 h-10 rounded-md mr-2 shadow-md"
-                        />
+                          className="w-9 h-9 rounded-md mr-2 shadow-sm"
+                          />
                       ) : (
-                        <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
+                        <div className="w-9 h-9 bg-card-foreground/20 rounded-md mr-2 text-card-foreground "
+                        >
                           <img
                             src={
                               "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
                             }
                             alt={`${playlist.name} cover`}
-                            className="w-10 h-10 rounded-md mr-2 shadow-md"
+                            className="w-9 h-9 rounded-md mr-2 shadow-sm"
                           />
                         </div>
                       )}
-                      <span>
+                      <span className="truncate max-w-[140px]">
                         <CustomTooltip
-                          children={truncateText(playlist.name, 20)}
+                          children={truncateText(playlist.name, 22)}
                           description={playlist.name}
                           time={300}
                         />
                       </span>
-                      <Popover
-                        open={popoverOpen}
-                        onOpenChange={handlePopoverOpenChange}
-                      >
-                        <PopoverTrigger asChild>
-                          <div className={`${editClass}`}>
-                            <CustomTooltip
-                              children={
-                                <Edit3
-                                  className={`${editClass}`}
-                                  onClick={(e) =>
-                                    handleRenameClick(
-                                      e,
-                                      playlist.id,
-                                      playlist.name
-                                    )
-                                  }
-                                />
-                              }
-                              description="Rename"
-                              time={300}
-                            />
-                          </div>
-                        </PopoverTrigger>
-                        {popoverOpen &&
-                          playlistToRename === playlist.id &&
-                          renamePosition && (
-                            <PopoverContent
-                              className="transform"
-                              style={{
-                                position: "absolute",
-                                top: -30,
+                      <div className="ml-auto">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label={`Open menu for ${playlist.name}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-8 h-8 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-40 p-1">
+                            <button
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/20"
+                              onClick={(e) => openRenameDialog(e, playlist.id, playlist.name)}
+                            >
+                              Rename
+                            </button>
+                            <button
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/20"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicatePlaylist(playlist);
                               }}
                             >
-                              <div className="flex flex-col p-4">
-                                <div className="text-foreground text-md pb-3">
-                                  Rename{" "}
-                                  <span className="font-semibold">
-                                    {playlist.name}{" "}
-                                  </span>
-                                  :
-                                </div>
-                                <Input
-                                  type="text"
-                                  value={newPlaylistName}
-                                  onChange={(e) =>
-                                    setNewPlaylistName(e.target.value)
-                                  }
-                                  placeholder="New playlist name"
-                                  className="mb-2"
-                                />
-                                <div className="pt-3 flex justify-end items-center">
-                                  <Button
-                                    className="mr-2"
-                                    onClick={handleRenameSave}
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    variant="secondary"
-                                    onClick={handleCancelRename}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            </PopoverContent>
-                          )}
-                      </Popover>
-                      <div className={`${trashClass} `}>
-                        <CustomTooltip
-                          children={
-                            <Trash2
-                              className={`${trashClass} ml-2`}
+                              Duplicate
+                            </button>
+                            <button
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/20 text-destructive"
                               onClick={(e) => handleDeleteClick(e, playlist.id)}
-                            />
-                          }
-                          description="Delete"
-                          time={300}
-                        />
+                            >
+                              Delete
+                            </button>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </li>
                   );
                 })}
               </ul>
+              )}
             </CardContent>
           </ScrollArea>
         </TabsContent>
         <ScrollArea className="w-full h-full">
           <TabsContent value="others" className="w-full h-full">
-            <CardHeader>Other Playlists</CardHeader>
             <CardContent>
+              {isLoading ? (
+                <RailSkeleton />
+              ) : (
               <ul>
-                {otherPlaylists?.map((playlist) => {
+                {filteredOthers?.map((playlist) => {
                   const isSelected = selectedPlaylists.some(
                     (selectedPlaylist) => selectedPlaylist.id === playlist.id
                   );
-                  const listItemClass = isSelected
-                    ? "rounded-xl p-3 bg-accent/30 hover:bg-accent/70 font-semibold flex items-center mb-2 text-md transition-all ease-out"
-                    : maxPlaylistsSelected
-                    ? "rounded-xl flex items-center mb-2 p-3 bg-muted text-md transition-all ease-out"
-                    : "rounded-xl flex items-center mb-2 p-3 hover:bg-accent/10 text-md transition-all ease-out";
+                  const listItemClass =
+                    (isSelected
+                      ? "relative bg-accent/15 "
+                      : maxPlaylistsSelected
+                      ? "relative bg-muted/50 "
+                      : "relative bg-card ") +
+                    "group rounded-lg h-12 px-2 flex items-center mb-1 text-sm transition-colors hover:bg-accent/10";
 
                   const handleClick = () => {
-                    if (!isSelected && maxPlaylistsSelected) return;
+                    const cachedKey = `cachedTracks_${playlist.id}`;
+                    const hasCache = Boolean(sessionStorage.getItem(cachedKey));
+                    console.group(
+                      "Playlist click",
+                      `${playlist.name} (${playlist.id})`
+                    );
+                    console.log("selected?", isSelected);
+                    console.log("cache", { key: cachedKey, present: hasCache });
+                    if (!isSelected && maxPlaylistsSelected) {
+                      console.warn(
+                        "Selection blocked: maximum selected playlists reached"
+                      );
+                      console.groupEnd();
+                      return;
+                    }
+                    console.log("Toggling selection");
+                    console.groupEnd();
                     onPlaylistToggle(playlist);
                   };
 
@@ -306,37 +323,76 @@ const SideNav: React.FC<SideNavProps> = ({
                       key={playlist.id}
                       className={listItemClass}
                       onClick={handleClick}
-                      onMouseEnter={() => setHoveredPlaylist(playlist.id)}
-                      onMouseLeave={() => setHoveredPlaylist(null)}
+                      data-playlist-id={playlist.id}
                     >
+                      {isSelected && (
+                        <span className="absolute left-0 top-0 h-full w-1.5 bg-accent rounded-l" aria-hidden="true" />
+                      )}
                       {playlist.images && playlist.images.length > 0 ? (
                         <img
                           src={playlist.images[0].url}
                           alt={`${playlist.name} cover`}
-                          className="w-10 h-10 rounded-md mr-2 shadow-md"
+                          className="w-9 h-9 rounded-md mr-2 shadow-sm"
                         />
                       ) : (
-                        <div className="w-10 h-10 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
+                        <div className="w-9 h-9 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
                           <img
                             src={
                               "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
                             }
                             alt={`${playlist.name} cover`}
-                            className="w-10 h-10 rounded-md mr-2 shadow-md"
+                            className="w-9 h-9 rounded-md mr-2 shadow-sm"
                           />
                         </div>
                       )}
-                      <span>
+                      <span className="truncate max-w-[140px]">
                         <CustomTooltip
                           children={truncateText(playlist.name, 20)}
                           description={playlist.name}
                           time={300}
                         />
                       </span>
+                      <div className="ml-auto">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label={`Open menu for ${playlist.name}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-8 h-8 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-40 p-1">
+                            <button
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/20"
+                              onClick={(e) => openRenameDialog(e, playlist.id, playlist.name)}
+                            >
+                              Rename
+                            </button>
+                            <button
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/20"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicatePlaylist(playlist);
+                              }}
+                            >
+                              Duplicate
+                            </button>
+                            <button
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/20 text-destructive"
+                              onClick={(e) => handleDeleteClick(e, playlist.id)}
+                            >
+                              Delete
+                            </button>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </li>
                   );
                 })}
               </ul>
+              )}
             </CardContent>
           </TabsContent>
         </ScrollArea>
@@ -353,7 +409,7 @@ const SideNav: React.FC<SideNavProps> = ({
         </ScrollArea>
       </Tabs>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogTrigger asChild>
           <span></span>
         </DialogTrigger>
@@ -383,8 +439,45 @@ const SideNav: React.FC<SideNavProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogTrigger asChild>
+          <span></span>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename playlist</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Input
+              type="text"
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              placeholder="New playlist name"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button onClick={handleRenameSave}>Save</Button>
+              <Button variant="secondary" onClick={handleCancelRename}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
 
 export default SideNav;
+
+const RailSkeleton: React.FC = () => {
+  return (
+    <ul className="space-y-1">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <li key={i} className="h-12 px-2 flex items-center gap-2 animate-pulse">
+          <div className="w-9 h-9 rounded-md bg-muted/30" />
+          <div className="h-4 w-40 rounded bg-muted/30" />
+        </li>
+      ))}
+    </ul>
+  );
+};
