@@ -8,7 +8,7 @@ import {
 
 interface CustomTooltipProps {
   children: React.ReactNode;
-  description: string;
+  description: React.ReactNode;
   time: number;
 }
 
