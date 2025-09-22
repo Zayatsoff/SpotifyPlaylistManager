@@ -6,7 +6,7 @@ import { Play, Pause } from "lucide-react";
 interface TrackComponentProps {
   track: Track;
   isPlaying: boolean;
-  onPlayPreview: (track: Track) => void;
+  onPlayPreview: (track: Track) => void | Promise<void>;
   density?: "comfortable" | "compact";
 }
 

@@ -23,7 +23,7 @@ import { Plus, Check, ChevronDown, Undo2, Loader2, ListPlus, AlertTriangle, BarC
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Input } from "@/components/ui/input";
 import useErrorHandling from "@/hooks/useErrorHandling";
-import SpotifyPreviewPlayer from "@/components/playlists/SpotifyPreviewPlayerComponent";
+import SpotifyPreviewPlayer, { SpotifyPreviewPlayerHandle } from "@/components/playlists/SpotifyPreviewPlayerComponent";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast/ToastProvider";
@@ -175,6 +175,8 @@ const PlaylistsPage: React.FC = () => {
   const isLoadingAnyTracks = useMemo(() => Object.values(loadingTracksMap).some(Boolean), [loadingTracksMap]);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
+  const [previewUrlCache, setPreviewUrlCache] = useState<Record<string, string>>({});
+  const previewPlayerRef = useRef<SpotifyPreviewPlayerHandle | null>(null);
 
   useErrorHandling(setShowErrorPopup);
 
@@ -230,6 +232,31 @@ const PlaylistsPage: React.FC = () => {
     fetchPlaylists();
   }, [token]);
 
+  const fetchTrackPreviewUrl = useCallback(
+    async (track: Track): Promise<string | null> => {
+      try {
+        const query = `${track.name} ${track.artists?.[0]?.name || ""}`.trim();
+        if (!query) return null;
+        const functionsBase = (import.meta as any).env?.VITE_FUNCTIONS_BASE
+          || (import.meta.env.MODE === "development"
+                ? "http://127.0.0.1:5001/spotifymanager-liorrozin-co/us-central1/api"
+                : "https://us-central1-spotifymanager-liorrozin-co.cloudfunctions.net/api");
+        const resp = await fetch(`${functionsBase}/preview?q=${encodeURIComponent(query)}&limit=1`);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        const preview: string | null = data?.previewUrl || null;
+        if (preview) {
+          setPreviewUrlCache((prev) => ({ ...prev, [track.id]: preview }));
+        }
+        return preview;
+      } catch (e) {
+        console.error("Failed to resolve preview via cloud function", e);
+        return null;
+      }
+    },
+    []
+  );
+
   const fetchAllTracks = async (playlistId: string) => {
     let allTracks: Track[] = [];
     let offset = 0;
@@ -239,7 +266,7 @@ const PlaylistsPage: React.FC = () => {
       console.log("Tracks: fetch start", { playlistId });
       while (true) {
         const response = await fetch(
-          `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}&market=US`,
+          `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}&market=from_token`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -321,29 +348,51 @@ const PlaylistsPage: React.FC = () => {
   }, [state.selectedPlaylists, token]);
 
   const handlePlayPreview = useCallback(
-    (track: Track) => {
-      const hasPreview = !!track.previewUrl && track.previewUrl.trim() !== "";
-      if (!hasPreview) {
-        showToast({
-          title: "No preview available",
-          description: track.name,
-          variant: "info",
-          duration: 2500,
-        });
-        if (currentTrack && currentTrack.id === track.id) {
-          setIsPlaying(false);
+    async (track: Track) => {
+      const cached = previewUrlCache[track.id];
+      const hasInline = !!track.previewUrl && track.previewUrl.trim() !== "";
+      const resolvedNow = hasInline ? track.previewUrl : cached;
+
+      if (resolvedNow) {
+        const playableTrack = hasInline ? track : { ...track, previewUrl: resolvedNow };
+        if (currentTrack && currentTrack.id === playableTrack.id) {
+          const next = !isPlaying;
+          setIsPlaying(next);
+          if (next) {
+            previewPlayerRef.current?.playFromClick(playableTrack);
+          } else {
+            previewPlayerRef.current?.pause();
+          }
+        } else {
+          setCurrentTrack(playableTrack);
+          setIsPlaying(true);
+          previewPlayerRef.current?.playFromClick(playableTrack);
         }
         return;
       }
 
-      if (currentTrack && currentTrack.id === track.id) {
-        setIsPlaying(!isPlaying);
-      } else {
-        setCurrentTrack(track);
+      // Fallback: fetch preview URL, then try to play
+      const fetched = await fetchTrackPreviewUrl(track);
+      if (fetched) {
+        const playableTrack = { ...track, previewUrl: fetched };
+        setCurrentTrack(playableTrack);
         setIsPlaying(true);
+        // Not strictly within the original click gesture anymore, but try to play
+        previewPlayerRef.current?.playFromClick(playableTrack);
+        return;
+      }
+
+      showToast({
+        title: "No preview available",
+        description: track.name,
+        variant: "info",
+        duration: 2500,
+      });
+      if (currentTrack && currentTrack.id === track.id) {
+        setIsPlaying(false);
       }
     },
-    [currentTrack, isPlaying, showToast]
+    [currentTrack, isPlaying, showToast, fetchTrackPreviewUrl, previewUrlCache]
   );
 
   const allTracks = useMemo(() => {
@@ -369,7 +418,7 @@ const PlaylistsPage: React.FC = () => {
       try {
         setIsSearchingNew(true);
         const resp = await fetch(
-          `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=50`,
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=50&market=from_token`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await resp.json();
@@ -1064,6 +1113,7 @@ const PlaylistsPage: React.FC = () => {
       </div>
       {currentTrack && (
         <SpotifyPreviewPlayer
+          ref={previewPlayerRef}
           track={currentTrack}
           isPlaying={isPlaying}
           onPlayPreview={handlePlayPreview}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Track } from "../../interfaces/PlaylistInterfaces";
 import { Play, Pause } from "lucide-react";
 
@@ -8,11 +8,12 @@ interface SpotifyPreviewPlayerProps {
   onPlayPreview: (track: Track) => void;
 }
 
-const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
-  track,
-  isPlaying,
-  onPlayPreview,
-}) => {
+export interface SpotifyPreviewPlayerHandle {
+  playFromClick: (track: Track) => Promise<void>;
+  pause: () => void;
+}
+
+const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPreviewPlayerProps>(({ track, isPlaying, onPlayPreview }, ref) => {
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -55,7 +56,7 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
       audioElement.addEventListener("canplaythrough", handleCanPlayThrough);
       const handleEnded = () => {
         setProgress(0);
-        onPlayPreview(track); // toggles play state off in parent
+        onPlayPreview(currentTrackRef.current || track); // toggles play state off in parent
       };
       audioElement.addEventListener("ended", handleEnded);
 
@@ -84,6 +85,32 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
       }
     }
   }, [isPlaying, track]);
+
+  useImperativeHandle(ref, () => ({
+    playFromClick: async (t: Track) => {
+      if (!audioRef.current) return;
+      const audioElement = audioRef.current;
+      try {
+        if (t.previewUrl && t.previewUrl.trim() !== "") {
+          if (audioElement.src !== t.previewUrl) {
+            audioElement.src = t.previewUrl;
+            audioElement.load();
+          }
+          currentTrackRef.current = t;
+          await audioElement.play();
+        }
+      } catch (e) {
+        console.error("Error playing preview from click:", e);
+      }
+    },
+    pause: () => {
+      try {
+        audioRef.current?.pause();
+      } catch (e) {
+        console.error("Error pausing audio:", e);
+      }
+    },
+  }));
 
   useEffect(() => {
     if (audioRef.current) {
@@ -209,10 +236,10 @@ const SpotifyPreviewPlayer: React.FC<SpotifyPreviewPlayerProps> = ({
             />
           </div>
         </div>
-        <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
+        <audio ref={audioRef} preload="auto" />
       </div>
     </div>
   );
-};
+});
 
 export default SpotifyPreviewPlayer;
