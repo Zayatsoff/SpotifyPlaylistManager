@@ -1,31 +1,18 @@
-import * as functions from "firebase-functions";
 import * as express from "express";
 import * as cors from "cors";
+import { onRequest } from "firebase-functions/v2/https";
 
 // Load local env when running emulator; safe no-op in production
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("dotenv").config();
 
-// Bridge Firebase runtime config to environment variables expected by spotify-preview-finder
-try {
-  const spotifyCfg = (functions.config() as any)?.spotify || {};
-  if (spotifyCfg.client_id && !process.env.SPOTIFY_CLIENT_ID) {
-    process.env.SPOTIFY_CLIENT_ID = spotifyCfg.client_id;
-  }
-  if (spotifyCfg.client_secret && !process.env.SPOTIFY_CLIENT_SECRET) {
-    process.env.SPOTIFY_CLIENT_SECRET = spotifyCfg.client_secret;
-  }
-} catch (_) {
-  // functions.config() may not be available locally without emulators; ignore
-}
-
 const app = express();
 app.use(cors({origin: true}));
 
 app.get("/config", (req, res) => {
-  const clientId = functions.config().spotify.client_id;
-  const redirectUri = functions.config().spotify.redirect_uri;
-  console.log(`Client ID: ${clientId}, Redirect URI: ${redirectUri}`);
+  const clientId = process.env.SPOTIFY_CLIENT_ID || "";
+  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || "";
+  console.log(`Client ID present: ${clientId ? "yes" : "no"}, Redirect URI present: ${redirectUri ? "yes" : "no"}`);
   res.json({clientId, redirectUri});
 });
 
@@ -58,4 +45,8 @@ app.get("/preview", async (req, res) => {
   }
 });
 
-exports.api = functions.https.onRequest(app);
+export const api = onRequest({
+  region: "us-central1",
+  cors: true,
+  secrets: ["SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "SPOTIFY_REDIRECT_URI"],
+}, app);
