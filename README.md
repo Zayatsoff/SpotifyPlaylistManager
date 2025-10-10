@@ -6,6 +6,11 @@
 
 - Consolidates selected playlists, presenting all their songs in a single view
 - Seamlessly add or remove songs across multiple playlists
+- Full track playback using Spotify Web Playback SDK (Premium users)
+  - Lazy-loaded SDK - only initializes when play button is pressed for optimal performance
+  - Automatic fallback to 30-second preview clips for non-Premium users
+  - Interactive progress bar with seek functionality
+  - Real-time playback controls
 
 ## Dependancies
 

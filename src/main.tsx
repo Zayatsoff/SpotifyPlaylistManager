@@ -7,10 +7,10 @@ import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SpotifyAuthProvider>
-      <ToastProvider>
+    <ToastProvider>
+      <SpotifyAuthProvider>
         <App />
-      </ToastProvider>
-    </SpotifyAuthProvider>
+      </SpotifyAuthProvider>
+    </ToastProvider>
   </React.StrictMode>
 );

@@ -175,8 +175,25 @@ const PlaylistsPage: React.FC = () => {
   const isLoadingAnyTracks = useMemo(() => Object.values(loadingTracksMap).some(Boolean), [loadingTracksMap]);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
-  const [previewUrlCache, setPreviewUrlCache] = useState<Record<string, string>>({});
   const previewPlayerRef = useRef<SpotifyPreviewPlayerHandle | null>(null);
+
+  const notifyDevMode403 = useCallback(() => {
+    const key = "notifiedSpotifyDevMode403";
+    if (sessionStorage.getItem(key)) return;
+    showToast({
+      title: "Access required",
+      description:
+        "Spotify returned 403. This app is in developer mode. Email contact@liorrozin.co to get access.",
+      variant: "error",
+      actionLabel: "Contact",
+      onAction: () => {
+        window.location.href =
+          "mailto:contact@liorrozin.co?subject=Spotify%20Playlist%20Manager%20access%20request";
+      },
+      duration: 8000,
+    });
+    sessionStorage.setItem(key, "1");
+  }, [showToast]);
 
   useErrorHandling(setShowErrorPopup);
 
@@ -202,10 +219,16 @@ const PlaylistsPage: React.FC = () => {
 
     try {
       setIsLoadingPlaylists(true);
+      let blocked = false;
       while (next) {
         const playlistsResponse = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (playlistsResponse.status === 403) {
+          notifyDevMode403();
+          blocked = true;
+          break;
+        }
         const data = await playlistsResponse.json();
         allPlaylists = [...allPlaylists, ...data.items];
         if (data.next) {
@@ -214,7 +237,9 @@ const PlaylistsPage: React.FC = () => {
           next = false;
         }
       }
-
+      if (blocked) {
+        return;
+      }
       sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
 
       dispatch({
@@ -232,31 +257,6 @@ const PlaylistsPage: React.FC = () => {
     fetchPlaylists();
   }, [token]);
 
-  const fetchTrackPreviewUrl = useCallback(
-    async (track: Track): Promise<string | null> => {
-      try {
-        const query = `${track.name} ${track.artists?.[0]?.name || ""}`.trim();
-        if (!query) return null;
-        const functionsBase = (import.meta as any).env?.VITE_FUNCTIONS_BASE
-          || (import.meta.env.MODE === "development"
-                ? "http://127.0.0.1:5001/spotifymanager-liorrozin-co/us-central1/api"
-                : "https://us-central1-spotifymanager-liorrozin-co.cloudfunctions.net/api");
-        const resp = await fetch(`${functionsBase}/preview?q=${encodeURIComponent(query)}&limit=1`);
-        if (!resp.ok) return null;
-        const data = await resp.json();
-        const preview: string | null = data?.previewUrl || null;
-        if (preview) {
-          setPreviewUrlCache((prev) => ({ ...prev, [track.id]: preview }));
-        }
-        return preview;
-      } catch (e) {
-        console.error("Failed to resolve preview via cloud function", e);
-        return null;
-      }
-    },
-    []
-  );
-
   const fetchAllTracks = async (playlistId: string) => {
     let allTracks: Track[] = [];
     let offset = 0;
@@ -269,22 +269,38 @@ const PlaylistsPage: React.FC = () => {
           `https://api.spotify.com/v1/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}&market=from_token`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
+        if (response.status === 403) {
+          notifyDevMode403();
+          break;
+        }
         const data = await response.json();
         if (!response.ok) {
           console.error("Spotify tracks API error", { playlistId, status: response.status, data });
           break;
         }
 
-        const tracks = data.items.map((item: any) => ({
-          id: item.track.id,
-          name: item.track.name,
-          artists: item.track.artists.map((artist: any) => ({
-            name: artist.name,
-          })),
-          albumImage: item.track.album.images[0]?.url || "",
-          previewUrl: item.track.preview_url || "",
-        }));
+        const tracks = data.items.map((item: any) => {
+          const track = {
+            id: item.track.id,
+            name: item.track.name,
+            artists: item.track.artists.map((artist: any) => ({
+              name: artist.name,
+            })),
+            albumImage: item.track.album.images[0]?.url || "",
+            previewUrl: item.track.preview_url || "",
+          };
+          
+          // Log tracks without preview URLs for debugging
+          if (!item.track.preview_url) {
+            console.warn(`Track "${track.name}" has no preview_url from Spotify API`, {
+              trackId: track.id,
+              available_markets: item.track.available_markets?.length || 0,
+              is_playable: item.track.is_playable
+            });
+          }
+          
+          return track;
+        });
 
         allTracks = [...allTracks, ...tracks];
 
@@ -349,50 +365,55 @@ const PlaylistsPage: React.FC = () => {
 
   const handlePlayPreview = useCallback(
     async (track: Track) => {
-      const cached = previewUrlCache[track.id];
-      const hasInline = !!track.previewUrl && track.previewUrl.trim() !== "";
-      const resolvedNow = hasInline ? track.previewUrl : cached;
-
-      if (resolvedNow) {
-        const playableTrack = hasInline ? track : { ...track, previewUrl: resolvedNow };
-        if (currentTrack && currentTrack.id === playableTrack.id) {
-          const next = !isPlaying;
-          setIsPlaying(next);
-          if (next) {
-            previewPlayerRef.current?.playFromClick(playableTrack);
-          } else {
-            previewPlayerRef.current?.pause();
+      // Handle pause/resume for same track
+      if (currentTrack && currentTrack.id === track.id) {
+        const next = !isPlaying;
+        setIsPlaying(next);
+        if (next) {
+          try {
+            await previewPlayerRef.current?.playFromClick(track);
+          } catch (error) {
+            console.error('Failed to resume playback:', error);
+            setIsPlaying(false);
           }
         } else {
-          setCurrentTrack(playableTrack);
-          setIsPlaying(true);
-          previewPlayerRef.current?.playFromClick(playableTrack);
+          previewPlayerRef.current?.pause();
         }
         return;
       }
 
-      // Fallback: fetch preview URL, then try to play
-      const fetched = await fetchTrackPreviewUrl(track);
-      if (fetched) {
-        const playableTrack = { ...track, previewUrl: fetched };
-        setCurrentTrack(playableTrack);
-        setIsPlaying(true);
-        // Not strictly within the original click gesture anymore, but try to play
-        previewPlayerRef.current?.playFromClick(playableTrack);
-        return;
-      }
-
-      showToast({
-        title: "No preview available",
-        description: track.name,
-        variant: "info",
-        duration: 2500,
-      });
-      if (currentTrack && currentTrack.id === track.id) {
+      // For new track, set it and try to play
+      // The SpotifyPreviewPlayer component will handle:
+      // 1. Web Playback SDK (uses track.id, doesn't need preview URL) - Premium users
+      // 2. HTML5 audio fallback (uses track.previewUrl from Spotify API) - All users
+      
+      setCurrentTrack(track);
+      setIsPlaying(true);
+      
+      try {
+        await previewPlayerRef.current?.playFromClick(track);
+      } catch (error: any) {
+        console.error('Playback failed:', error);
         setIsPlaying(false);
+        
+        if (error?.message === 'NO_PREVIEW_URL') {
+          showToast({
+            title: "Preview not available",
+            description: `"${track.name}" doesn't have a preview URL from Spotify. Try playing full tracks with Spotify Premium!`,
+            variant: "info",
+            duration: 5000,
+          });
+        } else {
+          showToast({
+            title: "Playback failed",
+            description: `Unable to play "${track.name}". Check console for details.`,
+            variant: "info",
+            duration: 3000,
+          });
+        }
       }
     },
-    [currentTrack, isPlaying, showToast, fetchTrackPreviewUrl, previewUrlCache]
+    [currentTrack, isPlaying, showToast]
   );
 
   const allTracks = useMemo(() => {
@@ -403,6 +424,29 @@ const PlaylistsPage: React.FC = () => {
       (track: Track) => track.id
     );
   }, [state.selectedPlaylists, state.playlistTracks]);
+
+  // Debug helper - expose in dev mode
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as any).debugSpotify = {
+        clearTracksCache: () => {
+          const keys = Object.keys(sessionStorage);
+          const trackKeys = keys.filter(k => k.startsWith('cachedTracks_'));
+          trackKeys.forEach(key => sessionStorage.removeItem(key));
+          console.log(`Cleared ${trackKeys.length} cached playlists. Refresh the page to reload tracks.`);
+        },
+        checkTrack: (trackName: string) => {
+          const track = allTracks.find(t => t.name.toLowerCase().includes(trackName.toLowerCase()));
+          if (track) {
+            console.log('Track details:', track);
+          } else {
+            console.log('Track not found in loaded playlists');
+          }
+        }
+      };
+      console.log('🔧 Debug commands available:\n  - window.debugSpotify.clearTracksCache()\n  - window.debugSpotify.checkTrack("song name")');
+    }
+  }, [allTracks]);
 
   // Unified search: spotify scope triggers remote search
   useEffect(() => {
@@ -421,6 +465,11 @@ const PlaylistsPage: React.FC = () => {
           `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=50&market=from_token`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        if (resp.status === 403) {
+          notifyDevMode403();
+          setAddSearchResults([]);
+          return;
+        }
         const data = await resp.json();
         const results: Track[] = (data.tracks?.items || []).map((t: any) => ({
           id: t.id,

@@ -1,8 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { default as Logo } from "@/assets/spm_quick_logo_colour.svg?react";
 import { default as Github } from "@/assets/github_logo.svg?react";
 import ThemeToggler from "@/components/ui/ThemeToggler";
-import { Search, History, PanelLeft } from "lucide-react";
+import { Search, History, PanelLeft, LogOut } from "lucide-react";
 import CustomTooltip from "../ui/CustomTooltip";
 import {
   Popover,
@@ -10,6 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { useSpotifyAuth } from "@/context/SpotifyAuthContext";
 
 interface TopNavProps {
   history: string[];
@@ -18,6 +20,14 @@ interface TopNavProps {
 }
 
 const TopNav: React.FC<TopNavProps> = ({ history, onOpenCommand, onToggleRail }) => {
+  const navigate = useNavigate();
+  const { setToken } = useSpotifyAuth();
+
+  const handleLogout = () => {
+    setToken(null); // Clear token and storage
+    navigate("/"); // Redirect to login page
+  };
+
   return (
     <div className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b">
       <div className="h-14 flex flex-row justify-between items-center px-2 md:px-3">
@@ -94,6 +104,22 @@ const TopNav: React.FC<TopNavProps> = ({ history, onOpenCommand, onToggleRail })
               </div>
             </PopoverContent>
           </Popover>
+          <div className="h-5 flex items-center">
+            <CustomTooltip
+              children={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  aria-label="Logout"
+                >
+                  <LogOut className="w-5 h-5 text-foreground" />
+                </Button>
+              }
+              description="Logout"
+              time={400}
+            />
+          </div>
           <ThemeToggler />
         </div>
       </div>

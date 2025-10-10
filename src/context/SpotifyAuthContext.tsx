@@ -5,6 +5,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 
 export interface SpotifyAuthContextType {
   token: string | null;
@@ -25,6 +26,25 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [token, setTokenState] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  const notifyDevMode403 = () => {
+    const key = "notifiedSpotifyDevMode403";
+    if (sessionStorage.getItem(key)) return;
+    showToast({
+      title: "Access required",
+      description:
+        "Spotify returned 403. This app is in developer mode. Email contact@liorrozin.co to get access.",
+      variant: "error",
+      actionLabel: "Contact",
+      onAction: () => {
+        window.location.href =
+          "mailto:contact@liorrozin.co?subject=Spotify%20Playlist%20Manager%20access%20request";
+      },
+      duration: 8000,
+    });
+    sessionStorage.setItem(key, "1");
+  };
 
   useEffect(() => {
     const fetchUserId = async (token: string) => {
@@ -32,6 +52,14 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
         const response = await fetch("https://api.spotify.com/v1/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (response.status === 403) {
+          notifyDevMode403();
+          return;
+        }
+        if (!response.ok) {
+          console.error("Failed to fetch user ID", { status: response.status });
+          return;
+        }
         const data = await response.json();
         setUserId(data.id);
       } catch (error) {
@@ -91,6 +119,14 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
       const response = await fetch("https://api.spotify.com/v1/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (response.status === 403) {
+        notifyDevMode403();
+        return;
+      }
+      if (!response.ok) {
+        console.error("Failed to fetch user ID", { status: response.status });
+        return;
+      }
       const data = await response.json();
       setUserId(data.id);
     } catch (error) {

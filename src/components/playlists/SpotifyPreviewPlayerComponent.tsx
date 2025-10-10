@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Track } from "../../interfaces/PlaylistInterfaces";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Loader2 } from "lucide-react";
+import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
 
 interface SpotifyPreviewPlayerProps {
   track: Track;
@@ -19,6 +20,9 @@ const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPrevi
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentTrackRef = useRef<Track | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
+  const [useWebPlayback, setUseWebPlayback] = useState(false);
+  const [sdkInitialized, setSdkInitialized] = useState(false);
+  const webPlaybackPlayer = useSpotifyPlayer();
 
   useEffect(() => {
     if (audioRef.current) {
@@ -86,34 +90,103 @@ const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPrevi
     }
   }, [isPlaying, track]);
 
+  // Load SDK on first play
+  const initializeWebPlayback = async () => {
+    if (!sdkInitialized) {
+      try {
+        await webPlaybackPlayer.loadSpotifySDK();
+        setSdkInitialized(true);
+        setUseWebPlayback(true);
+      } catch (error) {
+        console.error('Failed to load Spotify SDK, falling back to preview:', error);
+        setUseWebPlayback(false);
+      }
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     playFromClick: async (t: Track) => {
-      if (!audioRef.current) return;
-      const audioElement = audioRef.current;
-      try {
-        if (t.previewUrl && t.previewUrl.trim() !== "") {
-          if (audioElement.src !== t.previewUrl) {
-            audioElement.src = t.previewUrl;
-            audioElement.load();
-          }
+      console.log('Play requested for track:', t.name, {
+        hasPreviewUrl: !!t.previewUrl,
+        previewUrl: t.previewUrl,
+        sdkInitialized,
+        useWebPlayback,
+        sdkReady: webPlaybackPlayer.isReady
+      });
+
+      // Try to initialize Web Playback on first play
+      if (!sdkInitialized && !useWebPlayback) {
+        await initializeWebPlayback();
+      }
+
+      // Try Web Playback SDK first (for Premium users with full track playback)
+      if (useWebPlayback && webPlaybackPlayer.isReady) {
+        const trackUri = `spotify:track:${t.id}`;
+        console.log('Attempting Web Playback SDK with URI:', trackUri);
+        const success = await webPlaybackPlayer.playTrack(trackUri);
+        if (success) {
+          console.log('Web Playback SDK playback started successfully');
           currentTrackRef.current = t;
-          await audioElement.play();
+          return;
         }
+        console.warn('Web Playback SDK failed, falling back to preview');
+      }
+
+      // Fallback to preview URL (30-second clips)
+      if (!audioRef.current) {
+        console.error('Audio element not available');
+        return;
+      }
+      
+      const audioElement = audioRef.current;
+      
+      // Check if preview URL exists
+      if (!t.previewUrl || t.previewUrl.trim() === "") {
+        console.error('No preview URL available for track:', t.name);
+        throw new Error('NO_PREVIEW_URL');
+      }
+
+      try {
+        console.log('Playing preview URL:', t.previewUrl);
+        if (audioElement.src !== t.previewUrl) {
+          audioElement.src = t.previewUrl;
+          audioElement.load();
+        }
+        currentTrackRef.current = t;
+        await audioElement.play();
+        console.log('Preview playback started successfully');
       } catch (e) {
         console.error("Error playing preview from click:", e);
+        throw e;
       }
     },
     pause: () => {
       try {
-        audioRef.current?.pause();
+        if (useWebPlayback && webPlaybackPlayer.isReady) {
+          webPlaybackPlayer.pause();
+        } else {
+          audioRef.current?.pause();
+        }
       } catch (e) {
         console.error("Error pausing audio:", e);
       }
     },
   }));
 
+  // Update progress for both Web Playback and HTML5 audio
   useEffect(() => {
-    if (audioRef.current) {
+    let interval: ReturnType<typeof setInterval>;
+
+    if (useWebPlayback && webPlaybackPlayer.isReady) {
+      // Update progress from Web Playback SDK
+      interval = setInterval(() => {
+        if (webPlaybackPlayer.duration > 0) {
+          const progressPercent = (webPlaybackPlayer.position / webPlaybackPlayer.duration) * 100;
+          setProgress(progressPercent);
+        }
+      }, 100);
+    } else if (audioRef.current) {
+      // Update progress from HTML5 audio element
       const handleTimeUpdate = () => {
         if (audioRef.current) {
           const currentTime = (
@@ -124,7 +197,7 @@ const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPrevi
         }
       };
 
-      const interval = setInterval(handleTimeUpdate, 50); // Update progress every 50ms
+      interval = setInterval(handleTimeUpdate, 50);
       audioRef.current.addEventListener("timeupdate", handleTimeUpdate);
 
       return () => {
@@ -134,16 +207,29 @@ const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPrevi
         }
       };
     }
-  }, [isPlaying]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying, useWebPlayback, webPlaybackPlayer.isReady, webPlaybackPlayer.position, webPlaybackPlayer.duration]);
 
   const handleProgressClick = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => {
-    if (audioRef.current && progressBarRef.current) {
-      const progressBar = progressBarRef.current;
-      const rect = progressBar.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const newProgress = (clickX / rect.width) * 100;
+    if (!progressBarRef.current) return;
+
+    const progressBar = progressBarRef.current;
+    const rect = progressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const newProgress = (clickX / rect.width) * 100;
+
+    if (useWebPlayback && webPlaybackPlayer.isReady) {
+      // Seek in Web Playback SDK
+      const newPosition = (newProgress / 100) * webPlaybackPlayer.duration;
+      webPlaybackPlayer.seek(newPosition);
+      setProgress(newProgress);
+    } else if (audioRef.current) {
+      // Seek in HTML5 audio element
       const newTime = (newProgress / 100) * 30; // Assuming 30 seconds duration
       audioRef.current.currentTime = newTime;
       setProgress(newProgress);
@@ -167,8 +253,14 @@ const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPrevi
         Math.max((moveX / rect.width) * 100, 0),
         100
       );
-      const newTime = (newProgress / 100) * 30; // Assuming 30 seconds duration
-      if (audioRef.current) {
+
+      if (useWebPlayback && webPlaybackPlayer.isReady) {
+        // Seek in Web Playback SDK
+        const newPosition = (newProgress / 100) * webPlaybackPlayer.duration;
+        webPlaybackPlayer.seek(newPosition);
+      } else if (audioRef.current) {
+        // Seek in HTML5 audio element
+        const newTime = (newProgress / 100) * 30;
         audioRef.current.currentTime = newTime;
       }
       setProgress(newProgress);
@@ -205,11 +297,31 @@ const SpotifyPreviewPlayer = forwardRef<SpotifyPreviewPlayerHandle, SpotifyPrevi
           <span className="text-sm text-foreground">
             {track.artists[0].name}
           </span>
+          {useWebPlayback && webPlaybackPlayer.isReady && (
+            <span className="text-xs text-accent mt-1 flex items-center gap-1" title="Web Playback SDK is ready! Transfer playback from your Spotify app to play full tracks.">
+              ♫ Premium Player Ready
+            </span>
+          )}
+          {webPlaybackPlayer.isLoading && (
+            <span className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Loading player...
+            </span>
+          )}
+          {sdkInitialized && !webPlaybackPlayer.isReady && !webPlaybackPlayer.isLoading && (
+            <span className="text-xs text-muted-foreground mt-1" title="Transfer playback from Spotify app to this browser to enable full track playback">
+              Preview Mode (30s)
+            </span>
+          )}
         </div>
       </div>
       <div className="flex items-center w-3/4">
         <button onClick={() => onPlayPreview(track)} className="mr-3">
-          {isPlaying ? (
+          {webPlaybackPlayer.isLoading ? (
+            <div className="w-8 h-8 text-muted-foreground rounded-full flex items-center justify-center mr-3">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          ) : isPlaying ? (
             <div className="w-8 h-8 text-accent fill-accent hover:text-muted hover:fill-muted rounded-full flex items-center justify-center mr-3 transition-all ease-out">
               <Pause fill="" className="w-5 h-5 " />
             </div>
