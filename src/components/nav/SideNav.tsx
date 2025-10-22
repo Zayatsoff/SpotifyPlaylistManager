@@ -31,6 +31,7 @@ interface SideNavProps {
   currentUserId: string;
   onDuplicatePlaylist: (playlist: Playlist) => void;
   isLoading?: boolean;
+  devMode?: boolean;
 }
 
 const SideNav: React.FC<SideNavProps> = ({
@@ -42,6 +43,7 @@ const SideNav: React.FC<SideNavProps> = ({
   currentUserId,
   onDuplicatePlaylist,
   isLoading,
+  devMode,
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
@@ -55,12 +57,12 @@ const SideNav: React.FC<SideNavProps> = ({
     return null;
   }
 
-  const ownedPlaylists = playlists?.filter(
-    (playlist) => playlist.owner.id === currentUserId
-  );
-  const otherPlaylists = playlists?.filter(
-    (playlist) => playlist.owner.id !== currentUserId
-  );
+  const ownedPlaylists = devMode
+    ? playlists || []
+    : playlists?.filter((playlist) => playlist.owner.id === currentUserId);
+  const otherPlaylists = devMode
+    ? []
+    : playlists?.filter((playlist) => playlist.owner.id !== currentUserId);
 
   const filteredOwned = useMemo(() => {
     if (!ownedPlaylists) return [] as Playlist[];
@@ -214,10 +216,15 @@ const SideNav: React.FC<SideNavProps> = ({
                           src={playlist.images[0].url}
                           alt={`${playlist.name} cover`}
                           className="w-9 h-9 rounded-md mr-2 shadow-sm"
-                          />
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src =
+                              "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png";
+                            (e.currentTarget as HTMLImageElement).onerror = null;
+                          }}
+                        />
                       ) : (
-                        <div className="w-9 h-9 bg-card-foreground/20 rounded-md mr-2 text-card-foreground "
-                        >
+                        <div className="w-9 h-9 bg-card-foreground/20 rounded-md mr-2 text-card-foreground ">
                           <img
                             src={
                               "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"

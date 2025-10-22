@@ -3,7 +3,9 @@ export const getConfig = async () => {
   if (import.meta.env.MODE === "development") {
     return {
       clientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID,
-      redirectUri: import.meta.env.VITE_SPOTIFY_REDIRECT_URI,
+      redirectUri:
+        import.meta.env.VITE_SPOTIFY_REDIRECT_URI ||
+        `${window.location.origin}/callback`,
     };
   } else {
     const response = await fetch(

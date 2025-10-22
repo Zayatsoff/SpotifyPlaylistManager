@@ -27,12 +27,14 @@ import SpotifyPreviewPlayer, { SpotifyPreviewPlayerHandle } from "@/components/p
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast/ToastProvider";
+import { useDevModeDialog } from "@/components/ui/DevModeDialogProvider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import emptyState from "@/assets/emptyPlaylist.png";
 import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/ui/chip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CommandPalette, Command } from "@/components/ui/command-palette";
+import { DEV_PLAYLISTS, DEV_TRACKS_BY_PLAYLIST } from "@/utils/devSampleData";
 
 // Define action types and initial state outside of the component
 const actionTypes = {
@@ -170,30 +172,34 @@ const PlaylistsPage: React.FC = () => {
   const [addSearchResults, setAddSearchResults] = useState<Track[]>([]);
   const [isSearchingNew, setIsSearchingNew] = useState<boolean>(false);
   const [showStats, setShowStats] = useState<boolean>(false);
+  const [isDevMode, setIsDevMode] = useState<boolean>(false);
+  // If we've already shown the dev-mode modal anywhere, apply sample data immediately
+  useEffect(() => {
+    const DEV_SAMPLE_APPLIED_KEY = "devSampleApplied";
+    const devModalShown = !!sessionStorage.getItem("notifiedSpotifyDevMode403");
+    const alreadyApplied = !!sessionStorage.getItem(DEV_SAMPLE_APPLIED_KEY);
+    if (devModalShown && !alreadyApplied) {
+      dispatch({ type: actionTypes.SET_PLAYLISTS, payload: DEV_PLAYLISTS });
+      DEV_PLAYLISTS.forEach((p) =>
+        dispatch({ type: actionTypes.TOGGLE_PLAYLIST_SELECTION, payload: p })
+      );
+      sessionStorage.setItem(DEV_SAMPLE_APPLIED_KEY, "1");
+      setIsDevMode(true);
+    }
+  }, []);
+
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const { showToast } = useToast();
+  const { showDevMode403 } = useDevModeDialog();
   const isLoadingAnyTracks = useMemo(() => Object.values(loadingTracksMap).some(Boolean), [loadingTracksMap]);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
   const previewPlayerRef = useRef<SpotifyPreviewPlayerHandle | null>(null);
 
   const notifyDevMode403 = useCallback(() => {
-    const key = "notifiedSpotifyDevMode403";
-    if (sessionStorage.getItem(key)) return;
-    showToast({
-      title: "Access required",
-      description:
-        "Spotify returned 403. This app is in developer mode. Email contact@liorrozin.co to get access.",
-      variant: "error",
-      actionLabel: "Contact",
-      onAction: () => {
-        window.location.href =
-          "mailto:contact@liorrozin.co?subject=Spotify%20Playlist%20Manager%20access%20request";
-      },
-      duration: 8000,
-    });
-    sessionStorage.setItem(key, "1");
-  }, [showToast]);
+    // Always show the modal so users see the dev-mode notice even with cached sessions
+    showDevMode403();
+  }, [showDevMode403]);
 
   useErrorHandling(setShowErrorPopup);
 
@@ -201,16 +207,57 @@ const PlaylistsPage: React.FC = () => {
     setHistory((prevHistory) => [action, ...prevHistory]);
   };
 
+  const applyDevSample = useCallback(() => {
+    const DEV_SAMPLE_APPLIED_KEY = "devSampleApplied";
+    try {
+      sessionStorage.setItem("cachedPlaylists", JSON.stringify(DEV_PLAYLISTS));
+    } catch (e) {
+      // ignore
+    }
+    dispatch({ type: actionTypes.SET_PLAYLISTS, payload: DEV_PLAYLISTS });
+    if (!sessionStorage.getItem(DEV_SAMPLE_APPLIED_KEY)) {
+      DEV_PLAYLISTS.forEach((p) =>
+        dispatch({ type: actionTypes.TOGGLE_PLAYLIST_SELECTION, payload: p })
+      );
+      sessionStorage.setItem(DEV_SAMPLE_APPLIED_KEY, "1");
+    }
+    // Overwrite per-playlist cached tracks with local-cover dataset so UI never reads stale remote images
+    try {
+      DEV_PLAYLISTS.forEach((p) => {
+        const tracks = DEV_TRACKS_BY_PLAYLIST[p.id] || [];
+        sessionStorage.setItem(`cachedTracks_${p.id}`, JSON.stringify(tracks));
+      });
+    } catch (_) {}
+    // Always show the dev-mode modal when applying the sample, so users know why
+    try {
+      notifyDevMode403();
+    } catch (_) {}
+    setIsDevMode(true);
+  }, []);
+
   const fetchPlaylists = async () => {
-    if (!token) return;
+    if (!token) {
+      setIsLoadingPlaylists(true);
+      applyDevSample();
+      setIsLoadingPlaylists(false);
+      return;
+    }
 
     const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
-    if (cachedPlaylists) {
-      dispatch({
-        type: actionTypes.SET_PLAYLISTS,
-        payload: JSON.parse(cachedPlaylists),
-      });
+    // Prefer dev sample if we previously applied it
+    if (sessionStorage.getItem("devSampleApplied")) {
+      applyDevSample();
       return;
+    }
+    if (cachedPlaylists) {
+      try {
+        const parsed = JSON.parse(cachedPlaylists);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          dispatch({ type: actionTypes.SET_PLAYLISTS, payload: parsed });
+          return;
+        }
+      } catch (_) {}
+      // Empty or invalid cache → ignore and proceed
     }
 
     let allPlaylists: any[] = [];
@@ -229,6 +276,11 @@ const PlaylistsPage: React.FC = () => {
           blocked = true;
           break;
         }
+        if (!playlistsResponse.ok) {
+          // Treat any non-OK as blocked for demo purposes (e.g. 401 unauth)
+          blocked = true;
+          break;
+        }
         const data = await playlistsResponse.json();
         allPlaylists = [...allPlaylists, ...data.items];
         if (data.next) {
@@ -238,6 +290,12 @@ const PlaylistsPage: React.FC = () => {
         }
       }
       if (blocked) {
+        applyDevSample();
+        return;
+      }
+      if (allPlaylists.length === 0) {
+        // Nothing returned; show sample
+        applyDevSample();
         return;
       }
       sessionStorage.setItem("cachedPlaylists", JSON.stringify(allPlaylists));
@@ -248,6 +306,8 @@ const PlaylistsPage: React.FC = () => {
       });
     } catch (error) {
       console.error("Failed to fetch playlists", error);
+      // Fallback to dev sample on any fetch error
+      applyDevSample();
     } finally {
       setIsLoadingPlaylists(false);
     }
@@ -263,6 +323,10 @@ const PlaylistsPage: React.FC = () => {
     const limit = 100;
 
     try {
+      // Use dev sample tracks immediately if available
+      if (DEV_TRACKS_BY_PLAYLIST[playlistId]) {
+        return DEV_TRACKS_BY_PLAYLIST[playlistId];
+      }
       console.log("Tracks: fetch start", { playlistId });
       while (true) {
         const response = await fetch(
@@ -271,6 +335,11 @@ const PlaylistsPage: React.FC = () => {
         );
         if (response.status === 403) {
           notifyDevMode403();
+          // Use dev sample tracks for this playlist if available
+          const devTracks = DEV_TRACKS_BY_PLAYLIST[playlistId];
+          if (devTracks) {
+            allTracks = devTracks;
+          }
           break;
         }
         const data = await response.json();
@@ -654,6 +723,10 @@ const PlaylistsPage: React.FC = () => {
 
   const addTrackToPlaylist = async (playlistId: string, trackUri: string) => {
     try {
+      if (isDevMode) {
+        // No-op in dev mode; state/session are updated elsewhere
+        return { ok: true } as any;
+      }
       const response = await fetch(
         `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
         {
@@ -678,6 +751,10 @@ const PlaylistsPage: React.FC = () => {
     trackUri: string
   ) => {
     try {
+      if (isDevMode) {
+        // No-op in dev mode; state/session are updated elsewhere
+        return { ok: true } as any;
+      }
       const response = await fetch(
         `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
         {
@@ -857,16 +934,17 @@ const PlaylistsPage: React.FC = () => {
         <TopNav history={history} onOpenCommand={() => setIsCommandOpen(true)} onToggleRail={() => setRailOpen((s) => !s)} />
       </div>
       <div className={"w-full h-full gap-3 p-3 pt-0 overflow-hidden grid " + (railOpen ? "grid-cols-[auto,1fr]" : "grid-cols-1") }>
-        {userId && railOpen && (
+        {railOpen && (userId || isDevMode) && (
           <SideNav
             playlists={state.playlists}
             selectedPlaylists={state.selectedPlaylists}
             onPlaylistToggle={handlePlaylistToggle}
             onDeletePlaylist={handleDeletePlaylist}
             onRenamePlaylist={handleRenamePlaylist}
-            currentUserId={userId}
+            currentUserId={userId || 'spotify'}
             onDuplicatePlaylist={handleDuplicatePlaylist}
             isLoading={isLoadingPlaylists}
+            devMode={isDevMode}
           />
         )}
         <Card className="flex flex-col w-full h-full overflow-hidden">
@@ -1106,7 +1184,8 @@ const PlaylistsPage: React.FC = () => {
                   onPlayPreview={handlePlayPreview}
                   selectedPlaylists={state.selectedPlaylists}
                   playlistTracks={state.playlistTracks}
-                  userId={userId}
+                  userId={isDevMode ? 'spotify' : userId}
+                  devMode={isDevMode}
                   onToggleTrack={async (playlist: Playlist, track: Track, isInPlaylist: boolean) => {
                     if (isInPlaylist) {
                       await removeTrackFromPlaylist(playlist.id, `spotify:track:${track.id}`);
@@ -1114,6 +1193,14 @@ const PlaylistsPage: React.FC = () => {
                         type: actionTypes.REMOVE_TRACK_FROM_PLAYLIST,
                         payload: { playlistId: playlist.id, trackId: track.id },
                       });
+                      if (isDevMode) {
+                        const cacheKey = `cachedTracks_${playlist.id}`;
+                        try {
+                          const cached = JSON.parse(sessionStorage.getItem(cacheKey) || '[]');
+                          const next = Array.isArray(cached) ? cached.filter((t: any) => t.id !== track.id) : [];
+                          sessionStorage.setItem(cacheKey, JSON.stringify(next));
+                        } catch (_) {}
+                      }
                       setUndoStack((prev) => [...prev, { type: "remove", playlistId: playlist.id, track }]);
                       addToHistory(`Removed track "${track.name}" from playlist "${playlist.name}"`);
                       showToast({
@@ -1135,6 +1222,16 @@ const PlaylistsPage: React.FC = () => {
                         type: actionTypes.ADD_TRACK_TO_PLAYLIST,
                         payload: { playlistId: playlist.id, track },
                       });
+                      if (isDevMode) {
+                        const cacheKey = `cachedTracks_${playlist.id}`;
+                        try {
+                          const cached = JSON.parse(sessionStorage.getItem(cacheKey) || '[]');
+                          const base = Array.isArray(cached) ? cached : [];
+                          const exists = base.some((t: any) => t.id === track.id);
+                          const next = exists ? base : [...base, track];
+                          sessionStorage.setItem(cacheKey, JSON.stringify(next));
+                        } catch (_) {}
+                      }
                       setUndoStack((prev) => [...prev, { type: "add", playlistId: playlist.id, track }]);
                       addToHistory(`Added track "${track.name}" to playlist "${playlist.name}"`);
                       showToast({
@@ -1185,6 +1282,7 @@ type VirtualizedTracksProps = {
   onToggleTrack: (playlist: Playlist, track: Track, isInPlaylist: boolean) => void | Promise<void>;
   density: "comfortable" | "compact";
   onScrollStateChange?: (scrolled: boolean) => void;
+  devMode?: boolean;
 };
 
 const VirtualizedTracks: React.FC<VirtualizedTracksProps> = ({
@@ -1199,6 +1297,7 @@ const VirtualizedTracks: React.FC<VirtualizedTracksProps> = ({
   onToggleTrack,
   density,
   onScrollStateChange,
+  devMode,
 }) => {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const rowVirtualizer = useVirtualizer({
@@ -1262,7 +1361,7 @@ const VirtualizedTracks: React.FC<VirtualizedTracksProps> = ({
                       className="w-12 h-full flex justify-center items-center"
                       style={{ minWidth: `${48}px` }}
                     >
-                      {playlist.owner.id === userId ? (
+                      {(devMode || playlist.owner.id === userId) ? (
                         <CustomTooltip
                           description={isInPlaylist ? `Remove from ${playlist.name}` : `Add to ${playlist.name}`}
                           time={200}

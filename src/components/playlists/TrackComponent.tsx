@@ -2,6 +2,7 @@ import React from "react";
 import { Track } from "../../interfaces/PlaylistInterfaces";
 import CustomTooltip from "@/components/ui/CustomTooltip";
 import { Play, Pause } from "lucide-react";
+import emptyCover from "@/assets/emptyPlaylist.png";
 
 interface TrackComponentProps {
   track: Track;
@@ -37,9 +38,14 @@ const TrackComponent: React.FC<TrackComponentProps> = ({
         )}
       </button>
       <img
-        src={track.albumImage || ""}
+        src={track.albumImage || emptyCover}
         alt={track.name}
         className={coverSizeClass + " rounded-md mr-2 shadow-sm"}
+        referrerPolicy="no-referrer"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = emptyCover as unknown as string;
+          (e.currentTarget as HTMLImageElement).onerror = null;
+        }}
       />
 
       <CustomTooltip

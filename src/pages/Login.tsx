@@ -9,6 +9,7 @@ export default function Login() {
   const stateKey = "spotify_auth_state";
   const [config, setConfig] = useState({ clientId: "", redirectUri: "" });
   const [loading, setLoading] = useState(true);
+  const isConfigReady = !!(config.clientId && config.redirectUri);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -56,7 +57,7 @@ export default function Login() {
   };
 
   const handleLoginClick = () => {
-    if (config.clientId && config.redirectUri) {
+    if (isConfigReady) {
       const spotifyAuthUrl = generateAuthUrl();
       window.location.href = spotifyAuthUrl;
     } else {
@@ -75,7 +76,8 @@ export default function Login() {
         <Button
           onClick={handleLoginClick}
           className="h-10 lg:h-16 w-42 lg:w-72 rounded-full bg-primary/10 shadow-md hover:bg-primary/30 text-foreground text-sm lg:text-xl"
-          disabled={loading}
+          disabled={loading || !isConfigReady}
+          aria-disabled={loading || !isConfigReady}
         >
           <SpotifyLogo className="mr-3 w-5 lg:w-8" />
           <div>
@@ -83,6 +85,11 @@ export default function Login() {
             <span className="underline decoration-spotify">Spotify</span>
           </div>
         </Button>
+        {!loading && !isConfigReady && (
+          <div className="text-sm text-red-500 mt-2">
+            Missing required configuration. Please set VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_REDIRECT_URI.
+          </div>
+        )}
       </div>
       <div className="absolute bottom-3 right-3 text-sm text-foreground underline">
         <a

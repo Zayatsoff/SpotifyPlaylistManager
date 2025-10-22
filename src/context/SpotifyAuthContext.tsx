@@ -5,7 +5,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { useToast } from "@/components/ui/toast/ToastProvider";
+import { useDevModeDialog } from "@/components/ui/DevModeDialogProvider";
 
 export interface SpotifyAuthContextType {
   token: string | null;
@@ -26,24 +26,11 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [token, setTokenState] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const { showToast } = useToast();
+  const { showDevMode403 } = useDevModeDialog();
 
   const notifyDevMode403 = () => {
-    const key = "notifiedSpotifyDevMode403";
-    if (sessionStorage.getItem(key)) return;
-    showToast({
-      title: "Access required",
-      description:
-        "Spotify returned 403. This app is in developer mode. Email contact@liorrozin.co to get access.",
-      variant: "error",
-      actionLabel: "Contact",
-      onAction: () => {
-        window.location.href =
-          "mailto:contact@liorrozin.co?subject=Spotify%20Playlist%20Manager%20access%20request";
-      },
-      duration: 8000,
-    });
-    sessionStorage.setItem(key, "1");
+    // Always surface the modal so cached sessions still see the warning
+    showDevMode403();
   };
 
   useEffect(() => {
