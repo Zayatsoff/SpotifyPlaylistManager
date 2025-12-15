@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import { useNavigate } from "react-router-dom";
 import ThemeToggler from "@/components/ui/ThemeToggler";
@@ -14,16 +14,16 @@ function CallbackPage() {
   const { setToken } = useSpotifyAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const hasProcessedCallback = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Prevent duplicate execution (React Strict Mode, re-renders, etc.)
-      if (hasProcessedCallback.current) {
+      // Prevent duplicate execution using sessionStorage (persists across component remounts)
+      const PROCESSING_FLAG = "spotify_callback_processing";
+      if (sessionStorage.getItem(PROCESSING_FLAG) === "true") {
         console.log("Callback already processed, skipping...");
         return;
       }
-      hasProcessedCallback.current = true;
+      sessionStorage.setItem(PROCESSING_FLAG, "true");
       // Parse query parameters from URL (not hash, since we're using authorization code flow)
       const queryParams: AuthQueryParams = Object.fromEntries(
         new URLSearchParams(window.location.search)
@@ -32,12 +32,14 @@ function CallbackPage() {
       if (queryParams.error) {
         console.error("Authorization error:", queryParams.error);
         setError(`Authorization failed: ${queryParams.error}`);
+        sessionStorage.removeItem(PROCESSING_FLAG);
         return;
       }
 
       if (!queryParams.code) {
         console.error("No authorization code received");
         setError("No authorization code received");
+        sessionStorage.removeItem(PROCESSING_FLAG);
         return;
       }
 
@@ -47,6 +49,7 @@ function CallbackPage() {
       if (expectedState && queryParams.state && expectedState !== queryParams.state) {
         console.error("Authorization error: state mismatch");
         setError("State mismatch error");
+        sessionStorage.removeItem(PROCESSING_FLAG);
         return;
       }
 
@@ -55,6 +58,7 @@ function CallbackPage() {
       if (!codeVerifier) {
         console.error("Code verifier not found in session storage");
         setError("Code verifier missing");
+        sessionStorage.removeItem(PROCESSING_FLAG);
         return;
       }
 
@@ -88,6 +92,7 @@ function CallbackPage() {
           const errorData = await response.json();
           console.error("Token exchange failed:", errorData);
           setError(`Token exchange failed: ${errorData.error || "Unknown error"}`);
+          sessionStorage.removeItem(PROCESSING_FLAG);
           return;
         }
 
@@ -95,6 +100,7 @@ function CallbackPage() {
 
         // Store tokens
         if (tokenData.access_token) {
+          console.log("✅ Token received, saving to localStorage");
           setToken(tokenData.access_token);
 
           // Store refresh token if available
@@ -108,20 +114,23 @@ function CallbackPage() {
             localStorage.setItem("spotifyTokenExpiresAt", String(expiresAt));
           }
 
-          // Clean up session storage
+          // Clean up session storage (but keep the processing flag until navigation completes)
           sessionStorage.removeItem("spotify_code_verifier");
           localStorage.removeItem(stateKey);
 
           // Clean the URL and navigate
           window.history.pushState({}, document.title, window.location.pathname);
+          console.log("✅ Navigating to /playlists");
           navigate("/playlists");
         } else {
           console.error("No access token in response");
           setError("No access token received");
+          sessionStorage.removeItem(PROCESSING_FLAG);
         }
       } catch (err) {
         console.error("Error exchanging code for token:", err);
         setError(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+        sessionStorage.removeItem(PROCESSING_FLAG);
       }
     };
 

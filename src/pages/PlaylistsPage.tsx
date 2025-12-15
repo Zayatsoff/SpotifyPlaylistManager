@@ -236,7 +236,10 @@ const PlaylistsPage: React.FC = () => {
   }, []);
 
   const fetchPlaylists = async () => {
+    console.log("📋 fetchPlaylists called, token:", token ? `${token.substring(0, 20)}...` : "null");
+    
     if (!token) {
+      console.log("⚠️ No token, showing demo mode");
       setIsLoadingPlaylists(true);
       applyDevSample();
       setIsLoadingPlaylists(false);
@@ -246,6 +249,7 @@ const PlaylistsPage: React.FC = () => {
     const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
     // Prefer dev sample if we previously applied it
     if (sessionStorage.getItem("devSampleApplied")) {
+      console.log("ℹ️ Dev sample was previously applied, using it");
       applyDevSample();
       return;
     }

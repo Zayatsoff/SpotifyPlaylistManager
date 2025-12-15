@@ -36,15 +36,17 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const fetchUserIdOnLoad = async (token: string) => {
       try {
+        console.log("🔍 Validating token on load...");
         const response = await fetch("https://api.spotify.com/v1/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.status === 403) {
+          console.log("⚠️ 403 Forbidden - showing dev mode");
           notifyDevMode403();
           return;
         }
         if (response.status === 401) {
-          console.error("Token is invalid (401) on load, clearing auth state");
+          console.error("❌ Token is invalid (401) on load, clearing auth state");
           // Clear invalid token
           localStorage.removeItem("spotifyToken");
           localStorage.removeItem("spotifyTokenExpiresAt");
@@ -57,6 +59,7 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
           return;
         }
         const data = await response.json();
+        console.log("✅ Token validated, user ID:", data.id);
         setUserId(data.id);
       } catch (error) {
         console.error("Failed to fetch user ID", error);
@@ -65,11 +68,13 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
 
     // Check for stored token
     let token = window.localStorage.getItem("spotifyToken");
+    console.log("🔑 SpotifyAuthContext initializing, token found:", token ? `${token.substring(0, 20)}...` : "null");
 
     // Clear expired token if present
     const expiresAtRaw = localStorage.getItem("spotifyTokenExpiresAt");
     const isExpired = expiresAtRaw ? Date.now() > parseInt(expiresAtRaw, 10) : false;
     if (isExpired) {
+      console.log("⏰ Token expired, clearing");
       localStorage.removeItem("spotifyToken");
       localStorage.removeItem("spotifyTokenExpiresAt");
       localStorage.removeItem("spotifyRefreshToken");
@@ -80,6 +85,8 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
 
     if (token) {
       fetchUserIdOnLoad(token);
+    } else {
+      console.log("ℹ️ No valid token on load, user needs to login");
     }
 
     return () => {
@@ -89,12 +96,18 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const setToken = (token: string | null) => {
     if (token === null) {
+      console.log("🗑️ Clearing token and auth state");
       localStorage.removeItem("spotifyToken"); // Clear token from storage on logout or invalidation
       localStorage.removeItem("spotifyTokenExpiresAt");
       localStorage.removeItem("spotifyRefreshToken");
-      sessionStorage.clear(); // Clear session storage on logout
+      // Clear specific session storage items instead of everything
+      sessionStorage.removeItem("spotify_code_verifier");
+      sessionStorage.removeItem("spotify_callback_processing");
+      sessionStorage.removeItem("cachedPlaylists");
+      sessionStorage.removeItem("devSampleApplied");
       setUserId(null); // Clear userId on logout
     } else {
+      console.log("💾 Saving new token:", token.substring(0, 20) + "...");
       localStorage.setItem("spotifyToken", token); // Save token to storage
       fetchUserId(token); // Fetch user ID for the new token
     }

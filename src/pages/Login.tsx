@@ -80,6 +80,9 @@ export default function Login() {
     
     // Store code verifier for later use in callback
     sessionStorage.setItem("spotify_code_verifier", codeVerifier);
+    
+    // Clear any previous callback processing flag to allow new OAuth flow
+    sessionStorage.removeItem("spotify_callback_processing");
 
     console.log("Generating auth URL with redirect_uri:", config.redirectUri);
 
