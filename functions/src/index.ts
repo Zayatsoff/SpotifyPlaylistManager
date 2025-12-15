@@ -16,6 +16,62 @@ app.get("/config", (req, res) => {
   res.json({clientId, redirectUri});
 });
 
+// POST /token - Exchange authorization code for access token (PKCE flow)
+app.post("/token", async (req, res) => {
+  const {code, code_verifier, redirect_uri} = req.body;
+
+  if (!code || !code_verifier || !redirect_uri) {
+    res.status(400).json({error: "Missing required parameters: code, code_verifier, redirect_uri"});
+    return;
+  }
+
+  const clientId = process.env.SPOTIFY_CLIENT_ID || "";
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "";
+
+  if (!clientId || !clientSecret) {
+    console.error("Missing Spotify credentials in environment");
+    res.status(500).json({error: "Server configuration error"});
+    return;
+  }
+
+  try {
+    const tokenUrl = "https://accounts.spotify.com/api/token";
+    const params = new URLSearchParams();
+    params.append("grant_type", "authorization_code");
+    params.append("code", code);
+    params.append("redirect_uri", redirect_uri);
+    params.append("client_id", clientId);
+    params.append("client_secret", clientSecret);
+    params.append("code_verifier", code_verifier);
+
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Spotify token exchange failed:", response.status, errorData);
+      res.status(response.status).json({error: "Token exchange failed", details: errorData});
+      return;
+    }
+
+    const tokenData = await response.json();
+    res.json({
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token,
+      expires_in: tokenData.expires_in,
+      token_type: tokenData.token_type,
+    });
+  } catch (e: any) {
+    console.error("/token error", e);
+    res.status(500).json({error: e?.message || "Failed to exchange authorization code"});
+  }
+});
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const spotifyPreviewFinder = require("spotify-preview-finder");
 

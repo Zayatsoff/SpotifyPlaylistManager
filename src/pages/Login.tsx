@@ -15,6 +15,10 @@ export default function Login() {
     const fetchConfig = async () => {
       try {
         const configData = await getConfig();
+        console.log("Login config loaded:", {
+          clientId: configData.clientId ? "✓" : "✗",
+          redirectUri: configData.redirectUri,
+        });
         setConfig({
           clientId: configData.clientId,
           redirectUri: configData.redirectUri,
@@ -42,23 +46,58 @@ export default function Login() {
     return text;
   };
 
-  const generateAuthUrl = () => {
+  // Generate PKCE code verifier (random string)
+  const generateCodeVerifier = () => {
+    const length = 128;
+    const possible =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    let text = "";
+    for (let i = 0; i < length; i++) {
+      text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+  };
+
+  // Generate PKCE code challenge from verifier
+  const generateCodeChallenge = async (verifier: string) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const hash = await crypto.subtle.digest("SHA-256", data);
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
+    return base64;
+  };
+
+  const generateAuthUrl = async () => {
     const state = generateRandomString(16);
     localStorage.setItem(stateKey, state);
 
+    // Generate PKCE parameters
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    
+    // Store code verifier for later use in callback
+    sessionStorage.setItem("spotify_code_verifier", codeVerifier);
+
+    console.log("Generating auth URL with redirect_uri:", config.redirectUri);
+
     let url = "https://accounts.spotify.com/authorize";
-    url += "?response_type=token";
+    url += "?response_type=code"; // Changed from 'token' to 'code'
     url += "&client_id=" + encodeURIComponent(config.clientId);
     url += "&scope=" + encodeURIComponent(scope);
     url += "&redirect_uri=" + encodeURIComponent(config.redirectUri);
     url += "&state=" + encodeURIComponent(state);
+    url += "&code_challenge_method=S256";
+    url += "&code_challenge=" + encodeURIComponent(codeChallenge);
 
     return url;
   };
 
-  const handleLoginClick = () => {
+  const handleLoginClick = async () => {
     if (isConfigReady) {
-      const spotifyAuthUrl = generateAuthUrl();
+      const spotifyAuthUrl = await generateAuthUrl();
       window.location.href = spotifyAuthUrl;
     } else {
       console.error("Missing required configuration parameters.");

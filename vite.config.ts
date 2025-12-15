@@ -17,4 +17,8 @@ export default defineConfig({
     },
   },
   base: "./",
+  server: {
+    host: "127.0.0.1", // Use explicit IPv4 loopback (Spotify requires this, not "localhost")
+    port: 5175,
+  },
 });
