@@ -45,6 +45,7 @@ const actionTypes = {
   REMOVE_TRACK_FROM_PLAYLIST: "REMOVE_TRACK_FROM_PLAYLIST",
   DELETE_PLAYLIST: "DELETE_PLAYLIST",
   RENAME_PLAYLIST: "RENAME_PLAYLIST",
+  RESET_STATE: "RESET_STATE",
 };
 
 const initialState = {
@@ -131,6 +132,11 @@ const reducer = (state: State, action: Action) => {
             : p
         ),
       };
+    case actionTypes.RESET_STATE:
+      console.log("Reducer: RESET_STATE - clearing all selections and tracks");
+      return {
+        ...initialState,
+      };
     default:
       return state;
   }
@@ -207,7 +213,7 @@ const PlaylistsPage: React.FC = () => {
     setHistory((prevHistory) => [action, ...prevHistory]);
   };
 
-  const applyDevSample = useCallback(() => {
+  const applyDevSample = useCallback((showModal: boolean = false) => {
     const DEV_SAMPLE_APPLIED_KEY = "devSampleApplied";
     try {
       sessionStorage.setItem("cachedPlaylists", JSON.stringify(DEV_PLAYLISTS));
@@ -228,10 +234,13 @@ const PlaylistsPage: React.FC = () => {
         sessionStorage.setItem(`cachedTracks_${p.id}`, JSON.stringify(tracks));
       });
     } catch (_) {}
-    // Always show the dev-mode modal when applying the sample, so users know why
-    try {
-      notifyDevMode403();
-    } catch (_) {}
+    // Only show the dev-mode modal when explicitly requested (e.g., after API 403)
+    // Don't show during initial load race condition where token hasn't loaded yet
+    if (showModal) {
+      try {
+        notifyDevMode403();
+      } catch (_) {}
+    }
     setIsDevMode(true);
   }, []);
 
@@ -257,6 +266,8 @@ const PlaylistsPage: React.FC = () => {
         sessionStorage.removeItem(`cachedTracks_${p.id}`);
       });
       setIsDevMode(false);
+      // Reset component state to clear dev playlists and selections
+      dispatch({ type: actionTypes.RESET_STATE, payload: null });
     }
 
     const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
