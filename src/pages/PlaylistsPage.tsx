@@ -246,13 +246,14 @@ const PlaylistsPage: React.FC = () => {
       return;
     }
 
-    const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
-    // Prefer dev sample if we previously applied it
+    // Clear any devSampleApplied flag since we now have a valid token
+    // This handles the race condition where demo mode was set before token loaded
     if (sessionStorage.getItem("devSampleApplied")) {
-      console.log("ℹ️ Dev sample was previously applied, using it");
-      applyDevSample();
-      return;
+      console.log("🔄 Token now available, clearing devSampleApplied flag");
+      sessionStorage.removeItem("devSampleApplied");
     }
+
+    const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
     if (cachedPlaylists) {
       try {
         const parsed = JSON.parse(cachedPlaylists);
