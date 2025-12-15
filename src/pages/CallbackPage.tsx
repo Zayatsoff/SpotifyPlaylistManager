@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSpotifyAuth } from "../context/SpotifyAuthContext";
 import { useNavigate } from "react-router-dom";
 import ThemeToggler from "@/components/ui/ThemeToggler";
@@ -14,9 +14,16 @@ function CallbackPage() {
   const { setToken } = useSpotifyAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const hasProcessedCallback = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      // Prevent duplicate execution (React Strict Mode, re-renders, etc.)
+      if (hasProcessedCallback.current) {
+        console.log("Callback already processed, skipping...");
+        return;
+      }
+      hasProcessedCallback.current = true;
       // Parse query parameters from URL (not hash, since we're using authorization code flow)
       const queryParams: AuthQueryParams = Object.fromEntries(
         new URLSearchParams(window.location.search)
