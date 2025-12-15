@@ -1067,7 +1067,7 @@ const PlaylistsPage: React.FC = () => {
             {/* Settings panel removed; density toggle lives in header */}
             {/* Stats moved to right sheet */}
             <div className={"sticky top-0 z-10 bg-background border-t border-border/50 " + (listScrolled ? "shadow-sm" : "") }>
-              <div className="w-full flex overflow-x-auto">
+              <div className="w-full flex overflow-x-auto px-3">
                 <div
                   className="flex flex-col relative select-none"
                   style={{ minWidth: `${columnWidths.song}` }}
@@ -1125,34 +1125,28 @@ const PlaylistsPage: React.FC = () => {
                 {state.selectedPlaylists.map((playlist: Playlist) => (
                   <div
                     key={playlist.id}
-                    className="flex flex-col"
-                    style={{
-                      minWidth: `${columnWidths.playlists[playlist.id]}`,
-                    }}
+                    className="w-12 h-12 cursor-pointer flex items-center justify-center"
+                    style={{ minWidth: '48px' }}
+                    onClick={() => handleSort(playlist.id)}
                   >
-                    <div
-                      className="h-12 w-12 cursor-pointer flex flex-row items-center justify-center"
-                      onClick={() => handleSort(playlist.id)}
-                    >
-                      <CustomTooltip
-                        children={
-                          <img
-                            src={
-                              playlist?.images?.[0]?.url ||
-                              "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
-                            }
-                            alt={`${playlist?.name || "Playlist"} cover`}
-                            className={`w-10 h-10 rounded-md ${
-                              sortConfig.key === playlist.id
-                                ? "outline outline-3 outline-accent"
-                                : ""
-                            }`}
-                          />
-                        }
-                        description={playlist.name}
-                        time={200}
-                      />
-                    </div>
+                    <CustomTooltip
+                      children={
+                        <img
+                          src={
+                            playlist?.images?.[0]?.url ||
+                            "https://raw.githubusercontent.com/Zayatsoff/SpotifyPlaylistManager/main/src/assets/emptyPlaylist.png"
+                          }
+                          alt={`${playlist?.name || "Playlist"} cover`}
+                          className={`w-10 h-10 rounded-md ${
+                            sortConfig.key === playlist.id
+                              ? "outline outline-3 outline-accent"
+                              : ""
+                          }`}
+                        />
+                      }
+                      description={playlist.name}
+                      time={200}
+                    />
                   </div>
                 ))}
               </div>

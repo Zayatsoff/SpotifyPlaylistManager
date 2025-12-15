@@ -19,6 +19,38 @@
 - ShadCN
 - Lucide
 
+## Development Setup
+
+### Option 1: Run Backend Locally (Best for development/testing)
+
+In a separate terminal, run:
+
+```bash
+cd functions
+npm run serve
+```
+
+This starts the Firebase Functions emulator on `http://127.0.0.1:5001`.
+
+### Option 2: Use Production Backend
+
+If you prefer to use the production backend during development, add this to your `.env` file:
+
+```
+VITE_API_BASE_URL=https://us-central1-spotifymanager-liorrozin-co.cloudfunctions.net/api
+```
+
+### Environment Variables
+
+Create a `.env` file in the root directory with:
+
+```
+VITE_SPOTIFY_CLIENT_ID=your_client_id_here
+VITE_SPOTIFY_REDIRECT_URI=http://localhost:5175/callback
+```
+
+**Note:** For localhost development, Spotify requires `http://localhost` (not `https://`). Production domains must use `https://`.
+
 ## Disclaimer
 
 - You'll need to login using Spotify. None of your credentials are accessible to me.
