@@ -246,11 +246,17 @@ const PlaylistsPage: React.FC = () => {
       return;
     }
 
-    // Clear any devSampleApplied flag since we now have a valid token
+    // Clear any devSampleApplied flag and cached dev data since we now have a valid token
     // This handles the race condition where demo mode was set before token loaded
     if (sessionStorage.getItem("devSampleApplied")) {
-      console.log("🔄 Token now available, clearing devSampleApplied flag");
+      console.log("🔄 Token now available, clearing dev mode data and fetching real playlists");
       sessionStorage.removeItem("devSampleApplied");
+      sessionStorage.removeItem("cachedPlaylists"); // Clear cached dev playlists
+      // Clear any cached dev tracks
+      DEV_PLAYLISTS.forEach((p) => {
+        sessionStorage.removeItem(`cachedTracks_${p.id}`);
+      });
+      setIsDevMode(false);
     }
 
     const cachedPlaylists = sessionStorage.getItem("cachedPlaylists");
