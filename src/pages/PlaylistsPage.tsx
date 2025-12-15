@@ -137,7 +137,7 @@ const reducer = (state: State, action: Action) => {
 };
 
 const PlaylistsPage: React.FC = () => {
-  const { token, userId } = useSpotifyAuth(); // Assuming userId is available here
+  const { token, userId, setToken } = useSpotifyAuth(); // Assuming userId is available here
   const [state, dispatch] = useReducer(reducer, initialState);
   const [query, setQuery] = useState("");
   const [searchScope, setSearchScope] = useState<"selected" | "spotify">("selected");
@@ -276,8 +276,15 @@ const PlaylistsPage: React.FC = () => {
           blocked = true;
           break;
         }
+        if (playlistsResponse.status === 401) {
+          // Invalid token - clear it
+          console.error("Token is invalid (401), clearing auth state");
+          setToken(null);
+          blocked = true;
+          break;
+        }
         if (!playlistsResponse.ok) {
-          // Treat any non-OK as blocked for demo purposes (e.g. 401 unauth)
+          // Treat any other non-OK as blocked for demo purposes
           blocked = true;
           break;
         }
@@ -340,6 +347,11 @@ const PlaylistsPage: React.FC = () => {
           if (devTracks) {
             allTracks = devTracks;
           }
+          break;
+        }
+        if (response.status === 401) {
+          console.error("Token is invalid (401), clearing auth state");
+          setToken(null);
           break;
         }
         const data = await response.json();
@@ -536,6 +548,12 @@ const PlaylistsPage: React.FC = () => {
         );
         if (resp.status === 403) {
           notifyDevMode403();
+          setAddSearchResults([]);
+          return;
+        }
+        if (resp.status === 401) {
+          console.error("Token is invalid (401), clearing auth state");
+          setToken(null);
           setAddSearchResults([]);
           return;
         }

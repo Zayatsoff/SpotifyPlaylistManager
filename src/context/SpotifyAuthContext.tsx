@@ -34,13 +34,22 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
-    const fetchUserId = async (token: string) => {
+    const fetchUserIdOnLoad = async (token: string) => {
       try {
         const response = await fetch("https://api.spotify.com/v1/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.status === 403) {
           notifyDevMode403();
+          return;
+        }
+        if (response.status === 401) {
+          console.error("Token is invalid (401) on load, clearing auth state");
+          // Clear invalid token
+          localStorage.removeItem("spotifyToken");
+          localStorage.removeItem("spotifyTokenExpiresAt");
+          localStorage.removeItem("spotifyRefreshToken");
+          setTokenState(null);
           return;
         }
         if (!response.ok) {
@@ -70,7 +79,7 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
     setTokenState(token);
 
     if (token) {
-      fetchUserId(token);
+      fetchUserIdOnLoad(token);
     }
 
     return () => {
@@ -99,6 +108,12 @@ export const SpotifyAuthProvider: React.FC<{ children: ReactNode }> = ({
       });
       if (response.status === 403) {
         notifyDevMode403();
+        return;
+      }
+      if (response.status === 401) {
+        console.error("Token is invalid (401), clearing auth state");
+        // Clear invalid token
+        setToken(null);
         return;
       }
       if (!response.ok) {
