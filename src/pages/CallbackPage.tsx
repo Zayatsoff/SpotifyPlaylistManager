@@ -72,8 +72,8 @@ function CallbackPage() {
           },
           body: JSON.stringify({
             code: queryParams.code,
-            code_verifier: codeVerifier,
-            redirect_uri: config.redirectUri,
+            codeVerifier: codeVerifier,
+            redirectUri: config.redirectUri,
           }),
         });
 

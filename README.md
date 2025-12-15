@@ -49,8 +49,6 @@ VITE_SPOTIFY_CLIENT_ID=your_client_id_here
 VITE_SPOTIFY_REDIRECT_URI=http://localhost:5175/callback
 ```
 
-**Note:** For localhost development, Spotify requires `http://localhost` (not `https://`). Production domains must use `https://`.
-
 ## Disclaimer
 
 - You'll need to login using Spotify. None of your credentials are accessible to me.
